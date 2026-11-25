@@ -1,0 +1,4141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Atom Pattern Generator</title>
+  <style>/* Atom Pattern Generator - Visual Styling */
+
+:root {
+  --bg-main: #0B0E14;
+  --bg-panel: #151B26;
+  --bg-card: #1D2433;
+  --bg-input: #0D121D;
+  --border-color: #273142;
+  --border-focus: #4F6B94;
+
+  --text-primary: #F0F4F8;
+  --text-secondary: #8B9BB4;
+  --text-muted: #596A82;
+
+  --accent-blue: #3B82F6;
+  --accent-cyan: #06B6D4;
+  --accent-gold: #F59E0B;
+  --accent-danger: #EF4444;
+
+  --canvas-bg: #0D1117;
+  --canvas-border: #30363D;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+}
+
+body.light-theme {
+  --bg-main: #F3F4F6;
+  --bg-panel: #FFFFFF;
+  --bg-card: #F9FAFB;
+  --bg-input: #F3F4F6;
+  --border-color: #E5E7EB;
+  --border-focus: #9CA3AF;
+
+  --text-primary: #111827;
+  --text-secondary: #4B5563;
+  --text-muted: #9CA3AF;
+
+  --canvas-bg: #FFFFFF;
+  --canvas-border: #E5E7EB;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: var(--bg-main);
+  color: var(--text-primary);
+  height: 100vh;
+  overflow: hidden;
+  user-select: none;
+}
+
+.app-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  position: relative;
+}
+
+/* Header */
+.app-header {
+  height: 58px;
+  background-color: var(--bg-panel);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  z-index: 10;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-glyph {
+  font-size: 22px;
+  color: var(--accent-cyan);
+}
+
+.brand h1 {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.prototype-badge {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60A5FA;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.divider-v {
+  width: 1px;
+  height: 24px;
+  background: var(--border-color);
+  margin: 0 4px;
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 7px 14px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: none;
+}
+
+.btn-primary {
+  background: #2563EB;
+  color: #FFFFFF;
+}
+
+.btn-primary:hover {
+  background: #1D4ED8;
+}
+
+.btn-secondary {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover {
+  border-color: var(--border-focus);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.btn-danger {
+  background: rgba(239, 68, 68, 0.15);
+  color: #F87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.btn-danger:hover {
+  background: rgba(239, 68, 68, 0.25);
+}
+
+.btn-text {
+  background: transparent;
+  color: var(--accent-blue);
+  border: none;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 2px 6px;
+}
+
+.btn-text:hover {
+  text-decoration: underline;
+}
+
+/* Workspace */
+.workspace {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Canvas Area */
+.canvas-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-main);
+  padding: 16px 24px;
+  overflow-y: auto;
+}
+
+.canvas-meta-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.meta-left, .meta-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.family-badge {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  font-size: 12px;
+}
+
+.seed-badge {
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.wildcard-badge {
+  background: rgba(245, 158, 11, 0.18);
+  color: #FBBF24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.wildcard-badge.hidden {
+  display: none;
+}
+
+.meta-metric {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.meta-metric.warn {
+  color: var(--accent-gold);
+}
+
+.metric-divider {
+  color: var(--text-muted);
+}
+
+.canvas-viewport {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 480px;
+}
+
+.canvas-container {
+  width: 520px;
+  height: 520px;
+  max-width: 90vmin;
+  max-height: 90vmin;
+  background-color: var(--canvas-bg);
+  border: 1px solid var(--canvas-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  transition: background-color 0.2s ease;
+}
+
+.canvas-container svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Primary Navigation Bar */
+.canvas-nav-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 16px 0;
+  padding: 12px 18px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+}
+
+.btn-nav {
+  padding: 10px 22px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.btn-back {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+.btn-back:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.btn-next {
+  background: #2563EB;
+  color: #FFFFFF;
+  border: none;
+}
+
+.btn-next:hover {
+  background: #1D4ED8;
+}
+
+.nav-hint {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* Favorites Section */
+.favorites-section {
+  margin-top: 8px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+}
+
+.favorites-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.favorites-header h3 {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+
+.fav-tools {
+  display: flex;
+  gap: 8px;
+}
+
+.favorites-list {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+
+.empty-favs {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 12px 0;
+}
+
+.fav-card {
+  min-width: 170px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.fav-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fav-sub {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-family: ui-monospace, monospace;
+}
+
+.fav-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.btn-fav-load {
+  flex: 1;
+  background: rgba(59, 130, 246, 0.2);
+  color: #60A5FA;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 4px 0;
+  cursor: pointer;
+}
+
+.btn-fav-load:hover {
+  background: rgba(59, 130, 246, 0.35);
+}
+
+.btn-fav-del {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 12px;
+  width: 24px;
+  cursor: pointer;
+}
+
+.btn-fav-del:hover {
+  color: var(--accent-danger);
+  border-color: var(--accent-danger);
+}
+
+/* Controls Sidebar */
+.controls-sidebar {
+  width: 340px;
+  background: var(--bg-panel);
+  border-left: 1px solid var(--border-color);
+  padding: 18px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.group-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 6px;
+}
+
+.group-header h2 {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+}
+
+.group-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.control-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.control-label-wrap {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.control-label-wrap label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.control-val-lock {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.slider-val {
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--text-secondary);
+  min-width: 42px;
+  text-align: right;
+}
+
+.lock-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  opacity: 0.35;
+  transition: all 0.15s ease;
+}
+
+.lock-btn:hover {
+  opacity: 0.8;
+}
+
+.lock-btn.locked {
+  opacity: 1;
+  background: rgba(245, 158, 11, 0.2);
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+/* Range Sliders */
+input[type="range"] {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 4px;
+  background: var(--bg-input);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  background: #3B82F6;
+  border-radius: 50%;
+  border: 2px solid var(--bg-panel);
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+  transition: transform 0.1s ease;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+
+.slider-scale {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+/* Checkboxes */
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-card);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+/* Profile Drawer */
+.profile-drawer {
+  position: absolute;
+  top: 58px;
+  right: 0;
+  bottom: 0;
+  width: 380px;
+  background: var(--bg-panel);
+  border-left: 1px solid var(--border-color);
+  box-shadow: -10px 0 30px rgba(0, 0, 0, 0.4);
+  transform: translateX(100%);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-drawer.open {
+  transform: translateX(0);
+}
+
+.profile-drawer-content {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.drawer-header h3 {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.drawer-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+.profile-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.profile-col h4 {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+}
+
+.profile-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.profile-family-row {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.p-fam-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+}
+
+.p-fam-stat {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-family: ui-monospace, monospace;
+}
+
+.p-fam-bar-wrap {
+  width: 100%;
+  height: 4px;
+  background: var(--bg-input);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.p-fam-bar {
+  height: 100%;
+  background: var(--accent-cyan);
+}
+
+.p-fam-nudges {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.nudge-btn {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  width: 22px;
+  height: 20px;
+  font-size: 12px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.nudge-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.profile-slider-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  padding: 4px 0;
+  border-bottom: 1px dashed var(--border-color);
+}
+
+.p-slider-name {
+  color: var(--text-secondary);
+}
+
+.p-slider-val {
+  font-family: ui-monospace, monospace;
+  color: var(--text-primary);
+}
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: #1E293B;
+  color: #F8FAFC;
+  border: 1px solid #334155;
+  padding: 10px 20px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+  z-index: 100;
+}
+
+.toast.show {
+  transform: translateX(-50%) translateY(0);
+}
+
+.app-header { padding: 0 14px; }
+.canvas-panel { padding: 12px; }
+.controls-sidebar { width: 300px; padding: 14px; }
+</style>
+</head>
+<body class="dark-theme">
+  <div class="app-layout">
+    <!-- Top Bar -->
+    <header class="app-header">
+      <div class="brand">
+        <span class="brand-glyph">⚛</span>
+        <h1>Atom Pattern Generator</h1>
+        <span class="badge prototype-badge">Prototype</span>
+      </div>
+
+      <div class="header-actions">
+        <button id="theme-toggle-btn" class="btn btn-secondary">☀️ Light</button>
+        <button id="toggle-profile-btn" class="btn btn-secondary">📊 Taste Profile</button>
+        <div class="divider-v"></div>
+        <button id="copy-svg-btn" class="btn btn-secondary" title="Copy raw SVG markup for Figma (C)">📋 Copy SVG</button>
+        <button id="download-svg-btn" class="btn btn-secondary" title="Download .svg file">💾 Download SVG</button>
+        <button id="save-btn" class="btn btn-primary" title="Save pattern and update taste profile (S)">★ Save Design</button>
+      </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <div class="workspace">
+      <!-- Left / Canvas Area -->
+      <main class="canvas-panel">
+        <!-- Pattern Info Subheader -->
+        <div class="canvas-meta-bar">
+          <div class="meta-left">
+            <span id="family-badge" class="badge family-badge">Rosettes</span>
+            <span id="seed-badge" class="badge seed-badge">#123456</span>
+            <span id="wildcard-badge" class="badge wildcard-badge hidden">✨ Wildcard</span>
+          </div>
+
+          <div class="meta-right">
+            <span id="anchor-count-badge" class="meta-metric">0 anchors</span>
+            <span class="metric-divider">·</span>
+            <span id="render-time-badge" class="meta-metric">0 ms</span>
+          </div>
+        </div>
+
+        <!-- Canvas Viewport -->
+        <div class="canvas-viewport">
+          <div id="canvas-container" class="canvas-container"></div>
+        </div>
+
+        <!-- Primary Flow Navigation Controls -->
+        <nav class="canvas-nav-bar">
+          <button id="back-btn" class="btn btn-nav btn-back" title="Back to previous pattern (Left Arrow)" disabled>
+            ← Back
+          </button>
+          <div class="nav-hint">Press <strong>Space</strong> or click Next to explore</div>
+          <button id="next-btn" class="btn btn-nav btn-next" title="Next pattern from profile (Space / Right Arrow)">
+            Next Pattern →
+          </button>
+        </nav>
+
+        <!-- Favorites Tray -->
+        <section class="favorites-section">
+          <div class="favorites-header">
+            <h3>Saved Favorites (<span id="favorites-count">0</span>)</h3>
+            <div class="fav-tools">
+              <button id="export-json-btn" class="btn-text">Export JSON</button>
+              <button id="import-json-btn" class="btn-text">Import JSON</button>
+              <input type="file" id="import-file-input" accept=".json" style="display: none;">
+            </div>
+          </div>
+          <div id="favorites-list" class="favorites-list">
+            <div class="empty-favs">No saved patterns yet. Press "Save Design" on one you like!</div>
+          </div>
+        </section>
+      </main>
+
+      <!-- Right Controls Sidebar -->
+      <aside class="controls-sidebar">
+        <!-- Section: Composition Controls (Rebuilds Scene) -->
+        <div class="control-group">
+          <div class="group-header">
+            <h2>Composition</h2>
+            <span class="group-sub">Rebuilds structure</span>
+          </div>
+
+          <!-- Complexity -->
+          <div class="control-row">
+            <div class="control-label-wrap">
+              <label for="complexity-slider">Complexity</label>
+              <div class="control-val-lock">
+                <span id="complexity-val" class="slider-val">0.50</span>
+                <button class="lock-btn" data-control="complexity" title="Lock slider value">🔒</button>
+              </div>
+            </div>
+            <input type="range" id="complexity-slider" min="0" max="1" step="0.01" value="0.50">
+            <div class="slider-scale"><span>Simple</span><span>Complex</span></div>
+          </div>
+
+          <!-- Symmetry -->
+          <div class="control-row">
+            <div class="control-label-wrap">
+              <label for="symmetry-slider">Symmetry</label>
+              <div class="control-val-lock">
+                <span id="symmetry-val" class="slider-val">0.50</span>
+                <button class="lock-btn" data-control="symmetry" title="Lock slider value">🔒</button>
+              </div>
+            </div>
+            <input type="range" id="symmetry-slider" min="0" max="1" step="0.01" value="0.50">
+            <div class="slider-scale"><span>Asymmetry</span><span>Symmetry</span></div>
+          </div>
+
+          <!-- Focus -->
+          <div class="control-row">
+            <div class="control-label-wrap">
+              <label for="focus-slider">Focus</label>
+              <div class="control-val-lock">
+                <span id="focus-val" class="slider-val">0.50</span>
+                <button class="lock-btn" data-control="focus" title="Lock slider value">🔒</button>
+              </div>
+            </div>
+            <input type="range" id="focus-slider" min="0" max="1" step="0.01" value="0.50">
+            <div class="slider-scale"><span>Scattered</span><span>Focused</span></div>
+          </div>
+
+          <!-- Checkboxes -->
+          <div class="checkbox-row">
+            <label class="checkbox-label">
+              <input type="checkbox" id="depth-tilt-check">
+              <span>Depth / 3D Tilt</span>
+            </label>
+            <button class="lock-btn" data-control="depthTilt" title="Lock depth setting">🔒</button>
+          </div>
+
+          <div class="checkbox-row">
+            <label class="checkbox-label">
+              <input type="checkbox" id="annotations-check">
+              <span>Annotation Artifacts</span>
+            </label>
+            <button class="lock-btn" data-control="annotations" title="Lock annotations setting">🔒</button>
+          </div>
+        </div>
+
+        <!-- Section: Finish Controls (Instant Restyling) -->
+        <div class="control-group">
+          <div class="group-header">
+            <h2>Finish & Draftsmanship</h2>
+            <span class="group-sub">Instant restyling</span>
+          </div>
+
+          <!-- Rough to Clean -->
+          <div class="control-row">
+            <div class="control-label-wrap">
+              <label for="roughness-slider">Rough to Clean</label>
+              <div class="control-val-lock">
+                <span id="roughness-val" class="slider-val">0.20</span>
+                <button class="lock-btn" data-control="roughness" title="Lock slider value">🔒</button>
+              </div>
+            </div>
+            <input type="range" id="roughness-slider" min="0" max="1" step="0.01" value="0.20">
+            <div class="slider-scale"><span>Clean Arcs</span><span>Rough Pencil</span></div>
+          </div>
+
+          <!-- Line breaks -->
+          <div class="control-row">
+            <div class="control-label-wrap">
+              <label for="line-breaks-slider">Line Breaks</label>
+              <div class="control-val-lock">
+                <span id="line-breaks-val" class="slider-val">0.05</span>
+                <button class="lock-btn" data-control="lineBreaks" title="Lock slider value">🔒</button>
+              </div>
+            </div>
+            <input type="range" id="line-breaks-slider" min="0" max="1" step="0.01" value="0.05">
+            <div class="slider-scale"><span>Continuous</span><span>Broken Gaps</span></div>
+          </div>
+
+          <!-- Stroke Weight -->
+          <div class="control-row">
+            <div class="control-label-wrap">
+              <label for="stroke-weight-slider">Stroke Weight</label>
+              <div class="control-val-lock">
+                <span id="stroke-weight-val" class="slider-val">1.4px</span>
+                <button class="lock-btn" data-control="strokeWeight" title="Lock slider value">🔒</button>
+              </div>
+            </div>
+            <input type="range" id="stroke-weight-slider" min="0.6" max="6.0" step="0.1" value="1.4">
+            <div class="slider-scale"><span>Hairline (0.6px)</span><span>Bold (6.0px)</span></div>
+          </div>
+
+          <!-- Weight Variation -->
+          <div class="control-row">
+            <div class="control-label-wrap">
+              <label for="weight-variation-slider">Weight Variation</label>
+              <div class="control-val-lock">
+                <span id="weight-variation-val" class="slider-val">0.15</span>
+                <button class="lock-btn" data-control="weightVariation" title="Lock slider value">🔒</button>
+              </div>
+            </div>
+            <input type="range" id="weight-variation-slider" min="0" max="1" step="0.01" value="0.15">
+            <div class="slider-scale"><span>Uniform</span><span>Varied Chunks</span></div>
+          </div>
+
+          <!-- Overshoot -->
+          <div class="control-row">
+            <div class="control-label-wrap">
+              <label for="overshoot-slider">Overshoot</label>
+              <div class="control-val-lock">
+                <span id="overshoot-val" class="slider-val">0.10</span>
+                <button class="lock-btn" data-control="overshoot" title="Lock slider value">🔒</button>
+              </div>
+            </div>
+            <input type="range" id="overshoot-slider" min="0" max="1" step="0.01" value="0.10">
+            <div class="slider-scale"><span>Exact Ends</span><span>Construction Lines</span></div>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <!-- Collapsible Taste Profile Drawer -->
+    <div id="profile-drawer" class="profile-drawer">
+      <div class="profile-drawer-content">
+        <div class="drawer-header">
+          <h3>Learned Taste Profile</h3>
+          <p class="drawer-desc">Learns your preferences from saved designs and reference scores. No AI involved.</p>
+        </div>
+
+        <div class="profile-sections">
+          <div class="profile-col">
+            <h4>Family Weights (Distribution)</h4>
+            <div id="family-weights-list" class="profile-list"></div>
+          </div>
+
+          <div class="profile-col">
+            <h4>Learned Control Ranges</h4>
+            <div id="slider-stats-list" class="profile-list"></div>
+          </div>
+        </div>
+
+        <div class="drawer-footer">
+          <button id="reset-profile-btn" class="btn btn-danger">Reset to Default Baseline</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="toast">Action performed</div>
+  </div>
+
+  <script>
+/**
+ * Atom Pattern Generator - Math & PRNG Utilities
+ */
+
+// Mulberry32 deterministic 32-bit PRNG
+function createPRNG(seed = 123456789) {
+  let s = (typeof seed === 'number' ? seed : hashString(String(seed))) >>> 0;
+  if (s === 0) s = 1;
+
+  function next() {
+    s |= 0;
+    s = (s + 0x6d2b79f5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+
+  function range(min, max) {
+    return min + (max - min) * next();
+  }
+
+  function rangeInt(min, max) {
+    return Math.floor(range(min, max + 1));
+  }
+
+  function boolean(prob = 0.5) {
+    return next() < prob;
+  }
+
+  function choice(arr) {
+    if (!arr || arr.length === 0) return null;
+    return arr[Math.floor(next() * arr.length)];
+  }
+
+  function weightedChoice(items, weights) {
+    const total = weights.reduce((a, b) => a + b, 0);
+    let r = next() * total;
+    for (let i = 0; i < items.length; i++) {
+      r -= weights[i];
+      if (r <= 0) return items[i];
+    }
+    return items[items.length - 1];
+  }
+
+  // Box-Muller transform for normal distribution
+  let hasSpare = false;
+  let spare = 0;
+  function gaussian(mean = 0, stdDev = 1) {
+    if (hasSpare) {
+      hasSpare = false;
+      return mean + stdDev * spare;
+    }
+    let u = 0, v = 0, s = 0;
+    do {
+      u = next() * 2 - 1;
+      v = next() * 2 - 1;
+      s = u * u + v * v;
+    } while (s >= 1 || s === 0);
+
+    const mul = Math.sqrt(-2.0 * Math.log(s) / s);
+    spare = v * mul;
+    hasSpare = true;
+    return mean + stdDev * (u * mul);
+  }
+
+  return {
+    next,
+    range,
+    rangeInt,
+    boolean,
+    choice,
+    weightedChoice,
+    gaussian,
+    fork(offset = 1) {
+      return createPRNG((s + offset * 0x9e3779b9) >>> 0);
+    }
+  };
+}
+
+function hashString(str) {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+// 1D / 2D Value / Gradient Noise generator based on seed
+function createNoise(seed = 42) {
+  const p = new Uint8Array(512);
+  const prng = createPRNG(seed);
+  const perm = new Uint8Array(256);
+  for (let i = 0; i < 256; i++) perm[i] = i;
+  for (let i = 255; i > 0; i--) {
+    const j = Math.floor(prng.next() * (i + 1));
+    const tmp = perm[i];
+    perm[i] = perm[j];
+    perm[j] = tmp;
+  }
+  for (let i = 0; i < 512; i++) {
+    p[i] = perm[i & 255];
+  }
+
+  function fade(t) {
+    return t * t * t * (t * (t * 6 - 15) + 10);
+  }
+
+  function lerp(t, a, b) {
+    return a + t * (b - a);
+  }
+
+  function grad(hash, x, y) {
+    const h = hash & 7;
+    const u = h < 4 ? x : y;
+    const v = h < 4 ? y : x;
+    return ((h & 1) === 0 ? u : -u) + ((h & 2) === 0 ? v : -v);
+  }
+
+  function noise2D(x, y) {
+    const X = Math.floor(x) & 255;
+    const Y = Math.floor(y) & 255;
+    const xf = x - Math.floor(x);
+    const yf = y - Math.floor(y);
+
+    const u = fade(xf);
+    const v = fade(yf);
+
+    const aa = p[p[X] + Y];
+    const ab = p[p[X] + Y + 1];
+    const ba = p[p[X + 1] + Y];
+    const bb = p[p[X + 1] + Y + 1];
+
+    const x1 = lerp(u, grad(aa, xf, yf), grad(ba, xf - 1, yf));
+    const x2 = lerp(u, grad(ab, xf, yf - 1), grad(bb, xf - 1, yf - 1));
+
+    return lerp(v, x1, x2);
+  }
+
+  function noise1D(x) {
+    return noise2D(x, 0.5);
+  }
+
+  return { noise1D, noise2D };
+}
+
+// 2D Vector & Matrix operations
+const Vec2 = {
+  dist(a, b) {
+    const dx = a.x - b.x;
+    const dy = a.y - b.y;
+    return Math.hypot(dx, dy);
+  },
+  lerp(a, b, t) {
+    return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+  },
+  add(a, b) {
+    return { x: a.x + b.x, y: a.y + b.y };
+  },
+  sub(a, b) {
+    return { x: a.x - b.x, y: a.y - b.y };
+  },
+  scale(v, s) {
+    return { x: v.x * s, y: v.y * s };
+  },
+  length(v) {
+    return Math.hypot(v.x, v.y);
+  },
+  normalize(v) {
+    const len = Math.hypot(v.x, v.y);
+    return len === 0 ? { x: 0, y: 0 } : { x: v.x / len, y: v.y / len };
+  },
+  rotate(v, angle, center = { x: 0, y: 0 }) {
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    const x = v.x - center.x;
+    const y = v.y - center.y;
+    return {
+      x: center.x + x * cos - y * sin,
+      y: center.y + x * sin + y * cos
+    };
+  }
+};
+
+// 3D Matrix & Rotation Math
+class Matrix3D {
+  static createRotation(pitch, yaw, roll) {
+    // Pitch (X), Yaw (Y), Roll (Z)
+    const cp = Math.cos(pitch), sp = Math.sin(pitch);
+    const cy = Math.cos(yaw),   sy = Math.sin(yaw);
+    const cr = Math.cos(roll),  sr = Math.sin(roll);
+
+    return [
+      cy * cr,
+      cy * sr,
+      -sy,
+
+      sp * sy * cr - cp * sr,
+      sp * sy * sr + cp * cr,
+      sp * cy,
+
+      cp * sy * cr + sp * sr,
+      cp * sy * sr - sp * cr,
+      cp * cy
+    ];
+  }
+
+  static transformPoint(pt, m, center = { x: 500, y: 500, z: 0 }) {
+    const x = pt.x - center.x;
+    const y = pt.y - center.y;
+    const z = (pt.z || 0) - center.z;
+
+    const rx = m[0] * x + m[3] * y + m[6] * z;
+    const ry = m[1] * x + m[4] * y + m[7] * z;
+    const rz = m[2] * x + m[5] * y + m[8] * z;
+
+    return {
+      x: rx + center.x,
+      y: ry + center.y,
+      z: rz + center.z
+    };
+  }
+}
+
+// 2D Affine transform (tilt, squash, shear) for flat generators
+function applyPlaneTilt(pt, tiltAngle, squash, shear, center = { x: 500, y: 500 }) {
+  // Step 1: translate to center
+  let x = pt.x - center.x;
+  let y = pt.y - center.y;
+
+  // Step 2: rotate to tilt axis
+  const cos = Math.cos(tiltAngle);
+  const sin = Math.sin(tiltAngle);
+  let rx = x * cos - y * sin;
+  let ry = x * sin + y * cos;
+
+  // Step 3: squash Y and apply slight shear
+  ry = ry * squash;
+  rx = rx + ry * shear;
+
+  // Step 4: rotate back and restore center
+  const cosInv = Math.cos(-tiltAngle);
+  const sinInv = Math.sin(-tiltAngle);
+  const fx = rx * cosInv - ry * sinInv + center.x;
+  const fy = rx * sinInv + ry * cosInv + center.y;
+
+  return { x: fx, y: fy };
+}
+
+// Curve point sampler utilities
+function sampleArc(cx, cy, r, startAngle, endAngle, numPoints = 64) {
+  const points = [];
+  const delta = endAngle - startAngle;
+  for (let i = 0; i <= numPoints; i++) {
+    const theta = startAngle + (i / numPoints) * delta;
+    points.push({
+      x: cx + r * Math.cos(theta),
+      y: cy + r * Math.sin(theta)
+    });
+  }
+  return points;
+}
+
+function sampleEllipse(cx, cy, rx, ry, rotation = 0, startAngle = 0, endAngle = Math.PI * 2, numPoints = 64) {
+  const points = [];
+  const delta = endAngle - startAngle;
+  const cosR = Math.cos(rotation);
+  const sinR = Math.sin(rotation);
+
+  for (let i = 0; i <= numPoints; i++) {
+    const theta = startAngle + (i / numPoints) * delta;
+    const ex = rx * Math.cos(theta);
+    const ey = ry * Math.sin(theta);
+    points.push({
+      x: cx + ex * cosR - ey * sinR,
+      y: cy + ex * sinR + ey * cosR
+    });
+  }
+  return points;
+}
+
+// Catmull-Rom to Cubic Bezier path generation
+function catmullRomToBeziers(points, tension = 0.5) {
+  if (points.length < 2) return '';
+  if (points.length === 2) {
+    return `M ${points[0].x.toFixed(2)} ${points[0].y.toFixed(2)} L ${points[1].x.toFixed(2)} ${points[1].y.toFixed(2)}`;
+  }
+
+  let d = `M ${points[0].x.toFixed(2)} ${points[0].y.toFixed(2)}`;
+  const n = points.length;
+
+  for (let i = 0; i < n - 1; i++) {
+    const p0 = i > 0 ? points[i - 1] : points[i];
+    const p1 = points[i];
+    const p2 = points[i + 1];
+    const p3 = i < n - 2 ? points[i + 2] : p2;
+
+    const cp1x = p1.x + (p2.x - p0.x) * tension / 3;
+    const cp1y = p1.y + (p2.y - p0.y) * tension / 3;
+    const cp2x = p2.x - (p3.x - p1.x) * tension / 3;
+    const cp2y = p2.y - (p3.y - p1.y) * tension / 3;
+
+    d += ` C ${cp1x.toFixed(2)} ${cp1y.toFixed(2)}, ${cp2x.toFixed(2)} ${cp2y.toFixed(2)}, ${p2.x.toFixed(2)} ${p2.y.toFixed(2)}`;
+  }
+
+  return d;
+}
+
+// Resample a polyline at approximately uniform step distance
+function resamplePolyline(points, step = 5) {
+  if (points.length <= 1) return points.slice();
+  const res = [points[0]];
+  let accumulated = 0;
+
+  for (let i = 0; i < points.length - 1; i++) {
+    const p1 = points[i];
+    const p2 = points[i + 1];
+    const segDist = Vec2.dist(p1, p2);
+    if (segDist === 0) continue;
+
+    let d = 0;
+    while (accumulated + (segDist - d) >= step) {
+      const remaining = step - accumulated;
+      d += remaining;
+      const t = d / segDist;
+      res.push(Vec2.lerp(p1, p2, t));
+      accumulated = 0;
+    }
+    accumulated += (segDist - d);
+  }
+
+  const lastPt = points[points.length - 1];
+  if (Vec2.dist(res[res.length - 1], lastPt) > step * 0.3) {
+    res.push(lastPt);
+  }
+  return res;
+}
+
+/**
+ * Atom Pattern Generator - Scene Intermediate Representation (IR)
+ *
+ * Roles:
+ * - structure: hairline lines (1 to 2px)
+ * - accent: bolder curves (2.2x base)
+ * - nodes: small solid dots at crossings/tangents, hollow rings, star nodes, glow dots
+ * - arrows: arrowheads on open paths or spokes
+ * - hidden: far side of 3D forms (dashed / dotted)
+ * - guides: construction lines, rotated squares, center axes with ticks, guide circles
+ */
+
+class Scene {
+  constructor(width = 1000, height = 1000, margin = 60) {
+    this.width = width;
+    this.height = height;
+    this.margin = margin;
+    this.center = { x: width / 2, y: height / 2 };
+    this.seedCounter = 1000;
+
+    // Geometric element stores
+    this.paths = [];      // { points, role, isClosed, allowOvershoot, allowBreak, isAccent, seed }
+    this.dots = [];       // { x, y, r, filled, role, isGlow }
+    this.arrows = [];     // { x, y, angle, size, filled, role }
+    this.stars = [];      // { x, y, size, points, role }
+    this.ticks = [];      // { p1, p2, role }
+
+    // Flags for atom hint tracking
+    this.hasLobe = false;
+    this.hasParticleTrack = false;
+    this.hasLatticeNodes = false;
+    this.hasDotRidingCurve = false;
+    this.hasNucleusOrCenterDot = false;
+  }
+
+  addPath(points, options = {}) {
+    if (!points || points.length < 2) return;
+    this.paths.push({
+      points,
+      role: options.role || 'structure',
+      isClosed: options.isClosed ?? false,
+      allowOvershoot: options.allowOvershoot ?? (!options.isClosed),
+      allowBreak: options.allowBreak ?? true,
+      isAccent: options.isAccent ?? false,
+      seed: options.seed ?? ((this.seedCounter = (this.seedCounter + 9973) | 0) >>> 0)
+    });
+  }
+
+  addDot(x, y, r = 2.5, options = {}) {
+    this.dots.push({
+      x,
+      y,
+      r,
+      filled: options.filled ?? true,
+      role: options.role || 'nodes',
+      isGlow: options.isGlow ?? false
+    });
+  }
+
+  addArrow(x, y, angle, size = 7, options = {}) {
+    this.arrows.push({
+      x,
+      y,
+      angle,
+      size,
+      filled: options.filled ?? false,
+      role: options.role || 'arrows'
+    });
+  }
+
+  addStarNode(x, y, size = 5, rays = 4, options = {}) {
+    this.stars.push({
+      x,
+      y,
+      size,
+      rays,
+      role: options.role || 'nodes'
+    });
+  }
+
+  addTick(x1, y1, x2, y2, options = {}) {
+    this.ticks.push({
+      p1: { x: x1, y: y1 },
+      p2: { x: x2, y: y2 },
+      role: options.role || 'guides'
+    });
+  }
+
+  // Atom-hint guarantee
+  enforceAtomHint(prng) {
+    const hasAnyHint =
+      this.hasLobe ||
+      this.hasParticleTrack ||
+      this.hasLatticeNodes ||
+      this.hasDotRidingCurve ||
+      this.hasNucleusOrCenterDot ||
+      this.dots.length > 0;
+
+    if (!hasAnyHint) {
+      // Add nucleus-style center glow dot
+      this.addDot(this.center.x, this.center.y, prng ? prng.range(3, 4.5) : 3.5, {
+        filled: true,
+        role: 'nodes',
+        isGlow: true
+      });
+      this.hasNucleusOrCenterDot = true;
+    }
+  }
+}
+
+/**
+ * Generator 1: Rosettes and Circle Lattices
+ * Overlapping equal circles on a hex, square, or ring lattice,
+ * optionally inside a boundary circle, or nested circles tangent inside it.
+ */
+
+
+
+
+function generateRosette(prng, controls) {
+  const scene = new Scene();
+  scene.hasLatticeNodes = true;
+
+  const { complexity = 0.5, symmetry = 0.5, focus = 0.5, depthTilt = false, annotations = false } = controls;
+
+  const canvasCenter = { x: 500, y: 500 };
+  const maxRadius = 420 * (0.45 + 0.55 * complexity); // 45% to 100% of available radius
+  const latticeTypes = ['ring', 'hex', 'square', 'nested_tangent'];
+  const latticeType = prng.choice(latticeTypes);
+
+  // Ring / count calculation scaled by complexity
+  const count = Math.round(3 + complexity * 9); // 3 to 12
+  const radiusShare = prng.range(0.55, 0.95);
+  const boundaryOn = prng.boolean(0.65);
+  const useStarNodes = prng.boolean(0.4);
+  const centerGlow = prng.boolean(0.85);
+
+  // Tilt parameters
+  const tiltAngle = prng.range(0, Math.PI);
+  const squash = prng.range(0.45, 0.85);
+  const shear = prng.range(-0.15, 0.15);
+
+  // Transform helper that applies tilt if depthTilt is on
+  function transformPt(pt) {
+    if (!depthTilt) return pt;
+    return applyPlaneTilt(pt, tiltAngle, squash, shear, canvasCenter);
+  }
+
+  function addCirclePath(cx, cy, r, role = 'structure', isAccent = false) {
+    const raw = sampleArc(cx, cy, r, 0, Math.PI * 2, 72);
+    const transformed = raw.map(transformPt);
+    scene.addPath(transformed, {
+      role,
+      isClosed: true,
+      isAccent,
+      seed: prng.rangeInt(0, 1000000)
+    });
+  }
+
+  const crossingPoints = [];
+
+  if (latticeType === 'ring') {
+    // Concentric rings of petal circles
+    const kFold = Math.round(3 + symmetry * 9); // rotational symmetry order
+    const numRings = Math.max(1, Math.round(1 + complexity * 4));
+
+    for (let ring = 1; ring <= numRings; ring++) {
+      const ringRadius = (ring / numRings) * (maxRadius * 0.7);
+      const circleR = (maxRadius / numRings) * radiusShare;
+      const petalsInRing = Math.round(kFold * ring);
+
+      for (let i = 0; i < petalsInRing; i++) {
+        let angle = (i / petalsInRing) * Math.PI * 2;
+        let rOffset = 0;
+
+        // Symmetry perturb
+        if (symmetry < 0.99) {
+          const jitterAmount = (1 - symmetry) * 0.35;
+          if (symmetry < 0.5 || prng.boolean(0.3)) {
+            angle += prng.range(-jitterAmount, jitterAmount) * (Math.PI / petalsInRing);
+            rOffset += prng.range(-jitterAmount, jitterAmount) * (ringRadius * 0.2);
+          }
+        }
+
+        // Focus pull
+        let cx = canvasCenter.x + (ringRadius + rOffset) * Math.cos(angle);
+        let cy = canvasCenter.y + (ringRadius + rOffset) * Math.sin(angle);
+        if (focus > 0.5) {
+          const pull = (focus - 0.5) * 0.4;
+          cx = Vec2.lerp({ x: cx, y: cy }, canvasCenter, pull).x;
+          cy = Vec2.lerp({ x: cx, y: cy }, canvasCenter, pull).y;
+        }
+
+        const isAccent = (ring === 1 && i === 0 && prng.boolean(0.5));
+        addCirclePath(cx, cy, circleR, isAccent ? 'accent' : 'structure', isAccent);
+
+        crossingPoints.push({ x: cx, y: cy });
+      }
+    }
+  } else if (latticeType === 'hex') {
+    // Hexagonal packing lattice
+    const spacing = 70 - complexity * 35; // 35 to 70
+    const circleR = spacing * radiusShare;
+    const gridLimit = Math.ceil(maxRadius / spacing);
+
+    for (let q = -gridLimit; q <= gridLimit; q++) {
+      for (let r = -gridLimit; r <= gridLimit; r++) {
+        const x = canvasCenter.x + spacing * (Math.sqrt(3) * q + (Math.sqrt(3) / 2) * r);
+        const y = canvasCenter.y + spacing * (1.5 * r);
+        const d = Vec2.dist({ x, y }, canvasCenter);
+
+        if (d <= maxRadius) {
+          let cx = x;
+          let cy = y;
+          if (symmetry < 0.8) {
+            const jitter = (1 - symmetry) * 0.35 * spacing;
+            cx += prng.range(-jitter, jitter);
+            cy += prng.range(-jitter, jitter);
+          }
+          addCirclePath(cx, cy, circleR);
+          if (prng.boolean(0.25)) crossingPoints.push({ x: cx, y: cy });
+        }
+      }
+    }
+  } else if (latticeType === 'square') {
+    // Square grid lattice
+    const spacing = 80 - complexity * 40;
+    const circleR = spacing * radiusShare;
+    const gridLimit = Math.ceil(maxRadius / spacing);
+
+    for (let ix = -gridLimit; ix <= gridLimit; ix++) {
+      for (let iy = -gridLimit; iy <= gridLimit; iy++) {
+        const x = canvasCenter.x + ix * spacing;
+        const y = canvasCenter.y + iy * spacing;
+        const d = Vec2.dist({ x, y }, canvasCenter);
+
+        if (d <= maxRadius) {
+          let cx = x;
+          let cy = y;
+          if (symmetry < 0.8) {
+            const jitter = (1 - symmetry) * 0.35 * spacing;
+            cx += prng.range(-jitter, jitter);
+            cy += prng.range(-jitter, jitter);
+          }
+          addCirclePath(cx, cy, circleR);
+          if (prng.boolean(0.2)) crossingPoints.push({ x: cx, y: cy });
+        }
+      }
+    }
+  } else {
+    // Nested circles tangent inside boundary
+    const numCircles = Math.round(4 + complexity * 10);
+    for (let i = 0; i < numCircles; i++) {
+      const frac = (i + 1) / numCircles;
+      const r = (maxRadius * frac) / 2;
+      const cx = canvasCenter.x;
+      const cy = canvasCenter.y + maxRadius / 2 - r;
+      addCirclePath(cx, cy, r, i === numCircles - 1 ? 'accent' : 'structure');
+      crossingPoints.push({ x: cx, y: canvasCenter.y + maxRadius / 2 });
+    }
+  }
+
+  // Outer boundary circle
+  if (boundaryOn) {
+    addCirclePath(canvasCenter.x, canvasCenter.y, maxRadius, 'structure', false);
+  }
+
+  // Crossing nodes / star marks
+  const sampleCrossings = crossingPoints.filter(() => prng.boolean(0.5)).slice(0, 24);
+  for (const pt of sampleCrossings) {
+    const tPt = transformPt(pt);
+    if (useStarNodes) {
+      scene.addStarNode(tPt.x, tPt.y, prng.range(4, 7), 4, { role: 'nodes' });
+    } else {
+      scene.addDot(tPt.x, tPt.y, prng.range(2, 3.5), { filled: prng.boolean(0.8), role: 'nodes' });
+    }
+  }
+
+  // Center glow dot
+  if (centerGlow) {
+    const centerPt = transformPt(canvasCenter);
+    scene.addDot(centerPt.x, centerPt.y, prng.range(3.5, 5), {
+      filled: true,
+      role: 'nodes',
+      isGlow: true
+    });
+    scene.hasNucleusOrCenterDot = true;
+  }
+
+  // Annotation artifacts
+  if (annotations) {
+    // Dashed guide circle
+    const guidePts = sampleArc(canvasCenter.x, canvasCenter.y, maxRadius * 1.08, 0, Math.PI * 2, 60).map(transformPt);
+    scene.addPath(guidePts, { role: 'guides', isClosed: true, allowBreak: false });
+
+    // Center axes with tick marks
+    const axisLen = maxRadius * 0.9;
+    const pX1 = transformPt({ x: canvasCenter.x - axisLen, y: canvasCenter.y });
+    const pX2 = transformPt({ x: canvasCenter.x + axisLen, y: canvasCenter.y });
+    const pY1 = transformPt({ x: canvasCenter.x, y: canvasCenter.y - axisLen });
+    const pY2 = transformPt({ x: canvasCenter.x, y: canvasCenter.y + axisLen });
+
+    scene.addPath([pX1, pX2], { role: 'guides', allowOvershoot: false });
+    scene.addPath([pY1, pY2], { role: 'guides', allowOvershoot: false });
+
+    // Ticks along axes
+    const tickCount = 6;
+    for (let t = 1; t <= tickCount; t++) {
+      const frac = t / (tickCount + 1);
+      const tx = canvasCenter.x - axisLen + frac * 2 * axisLen;
+      const t1 = transformPt({ x: tx, y: canvasCenter.y - 4 });
+      const t2 = transformPt({ x: tx, y: canvasCenter.y + 4 });
+      scene.addTick(t1.x, t1.y, t2.x, t2.y, { role: 'guides' });
+    }
+  }
+
+  scene.enforceAtomHint(prng);
+  return scene;
+}
+
+/**
+ * Generator 2: Tangent Chains and Spirals
+ * Circles that each touch the previous one, with a dot at every touch point.
+ * Radius shrinks by ratio 0.55 to 0.85, curling into an epicycle or spiral.
+ * Optional golden-spiral arcs with rotated squares as hairline construction lines.
+ */
+
+
+
+
+function generateTangentChain(prng, controls) {
+  const scene = new Scene();
+  scene.hasDotRidingCurve = true;
+
+  const { complexity = 0.5, symmetry = 0.5, focus = 0.5, depthTilt = false, annotations = false } = controls;
+  const canvasCenter = { x: 500, y: 500 };
+
+  const tiltAngle = prng.range(0, Math.PI);
+  const squash = prng.range(0.45, 0.85);
+  const shear = prng.range(-0.15, 0.15);
+
+  function transformPt(pt) {
+    if (!depthTilt) return pt;
+    return applyPlaneTilt(pt, tiltAngle, squash, shear, canvasCenter);
+  }
+
+  // Chain parameters
+  const chainLength = Math.round(5 + complexity * 12); // 5 to 17 circles
+  const ratio = prng.range(0.60, 0.85);
+  const baseTurnAngle = prng.range(Math.PI * 0.4, Math.PI * 0.95);
+  const bleed = prng.boolean(0.5); // Biggest arc may bleed off frame
+
+  let currentRadius = bleed ? prng.range(280, 420) : prng.range(180, 260);
+  let currentCenter = {
+    x: canvasCenter.x - currentRadius * 0.4,
+    y: canvasCenter.y + currentRadius * 0.2
+  };
+  let currentAngle = prng.range(0, Math.PI * 2);
+
+  // If focus is high, shift initial center closer to canvas center
+  if (focus > 0.5) {
+    currentCenter = Vec2.lerp(currentCenter, canvasCenter, (focus - 0.5) * 1.5);
+  }
+
+  const centers = [currentCenter];
+  const radii = [currentRadius];
+  const touchPoints = [];
+
+  for (let i = 0; i < chainLength; i++) {
+    const nextRadius = currentRadius * ratio;
+    if (nextRadius < 5) break;
+
+    // Angle to place next circle tangent to current
+    let turn = baseTurnAngle;
+    if (symmetry < 0.8) {
+      turn += prng.range(-0.25, 0.25) * (1 - symmetry);
+    }
+
+    currentAngle += turn;
+    const distanceBetweenCenters = currentRadius + nextRadius;
+
+    // Next center
+    const nextCenter = {
+      x: currentCenter.x + distanceBetweenCenters * Math.cos(currentAngle),
+      y: currentCenter.y + distanceBetweenCenters * Math.sin(currentAngle)
+    };
+
+    // Touch point sits on line between currentCenter and nextCenter
+    const touchPoint = {
+      x: currentCenter.x + currentRadius * Math.cos(currentAngle),
+      y: currentCenter.y + currentRadius * Math.sin(currentAngle)
+    };
+    touchPoints.push(touchPoint);
+
+    currentCenter = nextCenter;
+    currentRadius = nextRadius;
+    centers.push(currentCenter);
+    radii.push(currentRadius);
+  }
+
+  // Draw circles
+  for (let i = 0; i < centers.length; i++) {
+    const c = centers[i];
+    const r = radii[i];
+    const raw = sampleArc(c.x, c.y, r, 0, Math.PI * 2, 64);
+    const transformed = raw.map(transformPt);
+
+    const isAccent = (i === 1 || (i === 0 && prng.boolean(0.4)));
+    scene.addPath(transformed, {
+      role: isAccent ? 'accent' : 'structure',
+      isClosed: true,
+      isAccent,
+      seed: prng.rangeInt(0, 1000000)
+    });
+  }
+
+  // Dots at touch points
+  for (let i = 0; i < touchPoints.length; i++) {
+    const tp = transformPt(touchPoints[i]);
+    scene.addDot(tp.x, tp.y, prng.range(2.2, 3.8), {
+      filled: true,
+      role: 'nodes'
+    });
+  }
+
+  // Golden spiral arc connecting touch points / centers
+  if (centers.length >= 3) {
+    const spiralPts = [];
+    for (let i = 0; i < centers.length; i++) {
+      spiralPts.push(centers[i]);
+      if (touchPoints[i]) spiralPts.push(touchPoints[i]);
+    }
+    const transformedSpiral = spiralPts.map(transformPt);
+    scene.addPath(transformedSpiral, {
+      role: 'structure',
+      isClosed: false,
+      allowOvershoot: true,
+      seed: prng.rangeInt(0, 1000000)
+    });
+
+    // Arrowhead at spiral tail if annotations on
+    if (annotations && transformedSpiral.length >= 2) {
+      const tip = transformedSpiral[transformedSpiral.length - 1];
+      const prev = transformedSpiral[transformedSpiral.length - 2];
+      const angle = Math.atan2(tip.y - prev.y, tip.x - prev.x);
+      scene.addArrow(tip.x, tip.y, angle, 8, { filled: false, role: 'arrows' });
+    }
+  }
+
+  // Construction lines / rotated squares (guides)
+  if (annotations || prng.boolean(0.4)) {
+    for (let i = 0; i < Math.min(centers.length - 1, 5); i++) {
+      const c1 = centers[i];
+      const c2 = centers[i + 1];
+      const side = radii[i] * 1.4;
+      const angle = Math.atan2(c2.y - c1.y, c2.x - c1.x);
+
+      const half = side / 2;
+      const squarePts = [
+        { x: -half, y: -half },
+        { x: half, y: -half },
+        { x: half, y: half },
+        { x: -half, y: half }
+      ].map(p => {
+        const rot = Vec2.rotate(p, angle);
+        return transformPt({ x: c1.x + rot.x, y: c1.y + rot.y });
+      });
+
+      // Add as guide polygon
+      for (let s = 0; s < 4; s++) {
+        scene.addPath([squarePts[s], squarePts[(s + 1) % 4]], {
+          role: 'guides',
+          isClosed: false,
+          allowOvershoot: true,
+          seed: prng.rangeInt(0, 1000000)
+        });
+      }
+    }
+  }
+
+  scene.enforceAtomHint(prng);
+  return scene;
+}
+
+/**
+ * Generator 3: Lobes and Envelopes
+ * (a) Rose and figure-8 lobes from r = a*cos(k*theta) with k from 1 to 4, plus center dot;
+ * (b) A stack of 6 to 40 ellipses rotated about one axis so they pinch into a bow-tie;
+ * (c) A circle foreshortened into a stack of flatter ellipses sharing one baseline.
+ * Atom hint: s, p, and d orbital shapes.
+ */
+
+
+
+
+function generateLobes(prng, controls) {
+  const scene = new Scene();
+  scene.hasLobe = true;
+
+  const { complexity = 0.5, symmetry = 0.5, focus = 0.5, depthTilt = false, annotations = false } = controls;
+  const canvasCenter = { x: 500, y: 500 };
+
+  const tiltAngle = prng.range(0, Math.PI);
+  const squash = prng.range(0.45, 0.85);
+  const shear = prng.range(-0.15, 0.15);
+
+  function transformPt(pt) {
+    if (!depthTilt) return pt;
+    return applyPlaneTilt(pt, tiltAngle, squash, shear, canvasCenter);
+  }
+
+  const subType = prng.choice(['rose', 'bowtie_stack', 'foreshortened_stack']);
+  const maxRadius = 380 * (0.55 + 0.45 * complexity);
+
+  if (subType === 'rose') {
+    // Polar rose / orbital lobes: r = A * cos(k * theta)
+    const k = prng.choice([1, 2, 3, 4]); // 1 = circle/dipole, 2 = 4-leaf clover (d-orbital), 3 = 3/6-leaf, 4 = 8-leaf
+    const numLayers = Math.round(1 + complexity * 3); // Nested orbital contours
+    const baseRotation = prng.range(0, Math.PI * 2);
+
+    for (let layer = 1; layer <= numLayers; layer++) {
+      const layerScale = (layer / numLayers) * maxRadius;
+      const points = [];
+      const steps = 144;
+      const angleMax = (k % 2 === 1) ? Math.PI : Math.PI * 2;
+
+      for (let s = 0; s <= steps; s++) {
+        const theta = (s / steps) * angleMax;
+        let r = layerScale * Math.cos(k * theta);
+
+        // Symmetry jitter if low
+        if (symmetry < 0.7) {
+          r *= (1 + prng.range(-0.15, 0.15) * (1 - symmetry));
+        }
+
+        const angle = theta + baseRotation;
+        const pt = {
+          x: canvasCenter.x + r * Math.cos(angle),
+          y: canvasCenter.y + r * Math.sin(angle)
+        };
+        points.push(transformPt(pt));
+      }
+
+      const isAccent = (layer === numLayers);
+      scene.addPath(points, {
+        role: isAccent ? 'accent' : 'structure',
+        isClosed: true,
+        isAccent,
+        seed: prng.rangeInt(0, 1000000)
+      });
+    }
+
+    // Nodes at tips of lobes
+    const tipCount = (k % 2 === 1) ? k : k * 2;
+    for (let t = 0; t < tipCount; t++) {
+      const tipAngle = baseRotation + (t / tipCount) * Math.PI * 2;
+      const tipPt = transformPt({
+        x: canvasCenter.x + maxRadius * Math.cos(tipAngle),
+        y: canvasCenter.y + maxRadius * Math.sin(tipAngle)
+      });
+      scene.addDot(tipPt.x, tipPt.y, prng.range(2.5, 3.5), { filled: true, role: 'nodes' });
+    }
+
+  } else if (subType === 'bowtie_stack') {
+    // Stack of 6 to 40 rotated ellipses pinching into a bow-tie / nodal pinch
+    const ellipseCount = Math.round(6 + complexity * 34); // 6 to 40
+    const rx = maxRadius * 0.85;
+    const ry = maxRadius * prng.range(0.2, 0.45);
+    const rotationSpread = prng.range(Math.PI * 0.25, Math.PI * 0.65);
+    const accentIndex = prng.rangeInt(0, ellipseCount - 1);
+
+    for (let i = 0; i < ellipseCount; i++) {
+      const t = ellipseCount > 1 ? (i / (ellipseCount - 1)) - 0.5 : 0;
+      let rot = t * rotationSpread;
+      if (symmetry < 0.8) {
+        rot += prng.range(-0.08, 0.08) * (1 - symmetry);
+      }
+
+      const raw = sampleEllipse(canvasCenter.x, canvasCenter.y, rx, ry, rot, 0, Math.PI * 2, 72);
+      const transformed = raw.map(transformPt);
+      const isAccent = (i === accentIndex);
+
+      scene.addPath(transformed, {
+        role: isAccent ? 'accent' : 'structure',
+        isClosed: true,
+        isAccent,
+        seed: prng.rangeInt(0, 1000000)
+      });
+    }
+
+    // Nodal pinch center dot
+    const cPt = transformPt(canvasCenter);
+    scene.addDot(cPt.x, cPt.y, 4, { filled: true, role: 'nodes', isGlow: true });
+
+  } else {
+    // Foreshortened stack of flatter ellipses sharing one baseline
+    const ellipseCount = Math.round(6 + complexity * 28);
+    const rx = maxRadius * 0.8;
+    const baselineY = canvasCenter.y + maxRadius * 0.4;
+    const accentIndex = Math.floor(ellipseCount / 2);
+
+    for (let i = 0; i < ellipseCount; i++) {
+      const frac = (i + 1) / ellipseCount;
+      const currentRy = maxRadius * 0.6 * frac;
+      const currentCy = baselineY - currentRy;
+
+      const raw = sampleEllipse(canvasCenter.x, currentCy, rx * (0.3 + 0.7 * frac), currentRy, 0, 0, Math.PI * 2, 64);
+      const transformed = raw.map(transformPt);
+      const isAccent = (i === accentIndex);
+
+      scene.addPath(transformed, {
+        role: isAccent ? 'accent' : 'structure',
+        isClosed: true,
+        isAccent,
+        seed: prng.rangeInt(0, 1000000)
+      });
+    }
+  }
+
+  // Nucleus center dot
+  const centerPt = transformPt(canvasCenter);
+  scene.addDot(centerPt.x, centerPt.y, prng.range(3, 4.5), { filled: true, role: 'nodes', isGlow: true });
+  scene.hasNucleusOrCenterDot = true;
+
+  // Annotations
+  if (annotations) {
+    // Nodal plane guide lines and axes
+    const p1 = transformPt({ x: canvasCenter.x - maxRadius * 1.1, y: canvasCenter.y });
+    const p2 = transformPt({ x: canvasCenter.x + maxRadius * 1.1, y: canvasCenter.y });
+    scene.addPath([p1, p2], { role: 'guides', allowOvershoot: false });
+
+    // Arrowhead on guide axis
+    const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+    scene.addArrow(p2.x, p2.y, angle, 8, { filled: false, role: 'arrows' });
+
+    // Guide circle
+    const guidePts = sampleEllipse(canvasCenter.x, canvasCenter.y, maxRadius * 1.05, maxRadius * 1.05, 0, 0, Math.PI * 2, 48).map(transformPt);
+    scene.addPath(guidePts, { role: 'guides', isClosed: true, allowBreak: false });
+  }
+
+  scene.enforceAtomHint(prng);
+  return scene;
+}
+
+/**
+ * Generator 4: Field Lines
+ * Dipole lines r = L*sin^2(theta) with L growing in a geometric series
+ * and mirrored across the axis, optional orthogonal equipotential loops,
+ * optional hyperbola pair, two pole dots.
+ * Atom hint: the field around a nucleus and an electron.
+ */
+
+
+
+
+function generateFieldLines(prng, controls) {
+  const scene = new Scene();
+  scene.hasDotRidingCurve = true;
+
+  const { complexity = 0.5, symmetry = 0.5, focus = 0.5, depthTilt = false, annotations = false } = controls;
+  const canvasCenter = { x: 500, y: 500 };
+
+  const tiltAngle = prng.range(0, Math.PI);
+  const squash = prng.range(0.45, 0.85);
+  const shear = prng.range(-0.15, 0.15);
+
+  function transformPt(pt) {
+    if (!depthTilt) return pt;
+    return applyPlaneTilt(pt, tiltAngle, squash, shear, canvasCenter);
+  }
+
+  const axisAngle = prng.range(0, Math.PI);
+  const lineCount = Math.round(5 + complexity * 18); // 5 to 23 per side
+  const growthRate = prng.range(1.15, 1.45);
+  const withEquipotentials = prng.boolean(0.65);
+  const withHyperbolas = prng.boolean(0.4);
+
+  // Separation between dipole poles
+  let poleDistance = 140 * (0.6 + 0.6 * (1 - focus));
+  const pole1 = {
+    x: canvasCenter.x - (poleDistance / 2) * Math.cos(axisAngle),
+    y: canvasCenter.y - (poleDistance / 2) * Math.sin(axisAngle)
+  };
+  const pole2 = {
+    x: canvasCenter.x + (poleDistance / 2) * Math.cos(axisAngle),
+    y: canvasCenter.y + (poleDistance / 2) * Math.sin(axisAngle)
+  };
+
+  // Dipole field lines: r = L * sin^2(theta)
+  // Drawn from pole 1 to pole 2
+  const maxL = 450 * (0.5 + 0.5 * complexity);
+  let currentL = poleDistance * 0.8;
+
+  for (let i = 0; i < lineCount; i++) {
+    currentL *= growthRate;
+    if (currentL > maxL) break;
+
+    // Both sides (+ and - theta)
+    for (const side of [1, -1]) {
+      const pts = [];
+      const steps = 72;
+      const angleStart = 0.08;
+      const angleEnd = Math.PI - 0.08;
+
+      for (let s = 0; s <= steps; s++) {
+        const theta = angleStart + (s / steps) * (angleEnd - angleStart);
+        let r = currentL * Math.sin(theta) * Math.sin(theta);
+
+        if (symmetry < 0.7) {
+          r *= (1 + prng.range(-0.1, 0.1) * (1 - symmetry));
+        }
+
+        const phi = axisAngle + side * theta;
+        const pt = {
+          x: canvasCenter.x + r * Math.cos(phi),
+          y: canvasCenter.y + r * Math.sin(phi)
+        };
+        pts.push(transformPt(pt));
+      }
+
+      const isAccent = (i === 1 && side === 1);
+      scene.addPath(pts, {
+        role: isAccent ? 'accent' : 'structure',
+        isClosed: false,
+        allowOvershoot: true,
+        isAccent,
+        seed: prng.rangeInt(0, 1000000)
+      });
+
+      // Directional arrows along field lines if annotations on
+      if (annotations && pts.length >= 10 && prng.boolean(0.35)) {
+        const midIdx = Math.floor(pts.length / 2);
+        const pA = pts[midIdx - 1];
+        const pB = pts[midIdx + 1];
+        const aAngle = Math.atan2(pB.y - pA.y, pB.x - pA.x);
+        scene.addArrow(pts[midIdx].x, pts[midIdx].y, aAngle, 7, { filled: false, role: 'arrows' });
+      }
+    }
+  }
+
+  // Orthogonal equipotential loops around poles
+  if (withEquipotentials) {
+    const loopCount = Math.round(2 + complexity * 4);
+    for (const pole of [pole1, pole2]) {
+      for (let l = 1; l <= loopCount; l++) {
+        const eqRadius = (poleDistance * 0.25) * Math.pow(1.35, l);
+        const pts = [];
+        const steps = 48;
+        for (let s = 0; s <= steps; s++) {
+          const theta = (s / steps) * Math.PI * 2;
+          const pt = {
+            x: pole.x + eqRadius * Math.cos(theta),
+            y: pole.y + eqRadius * Math.sin(theta)
+          };
+          pts.push(transformPt(pt));
+        }
+        scene.addPath(pts, {
+          role: 'structure',
+          isClosed: true,
+          seed: prng.rangeInt(0, 1000000)
+        });
+      }
+    }
+  }
+
+  // Hyperbola pair asymptotes (guide lines)
+  if (withHyperbolas || annotations) {
+    const perpAngle = axisAngle + Math.PI / 2;
+    const len = maxL * 0.7;
+    const p1 = transformPt({
+      x: canvasCenter.x - len * Math.cos(perpAngle),
+      y: canvasCenter.y - len * Math.sin(perpAngle)
+    });
+    const p2 = transformPt({
+      x: canvasCenter.x + len * Math.cos(perpAngle),
+      y: canvasCenter.y + len * Math.sin(perpAngle)
+    });
+    scene.addPath([p1, p2], { role: 'guides', allowOvershoot: false });
+  }
+
+  // Two pole dots (the charges / nucleus and electron)
+  const tp1 = transformPt(pole1);
+  const tp2 = transformPt(pole2);
+  scene.addDot(tp1.x, tp1.y, 4, { filled: true, role: 'nodes', isGlow: true });
+  scene.addDot(tp2.x, tp2.y, 3.2, { filled: false, role: 'nodes' }); // Hollow ring for complementary pole
+  scene.hasNucleusOrCenterDot = true;
+
+  scene.enforceAtomHint(prng);
+  return scene;
+}
+
+/**
+ * Generator 5: Particle Burst
+ * 12 to 70 rays from one origin. Angles from jittered even spread,
+ * lengths from skewed distribution (a few long rays, many short).
+ * Tips take small arrowheads. Optional spokes ending in dots and broken concentric arcs.
+ * Atom hint: scattering and decay tracks.
+ */
+
+
+
+
+function generateParticleBurst(prng, controls) {
+  const scene = new Scene();
+  scene.hasParticleTrack = true;
+
+  const { complexity = 0.5, symmetry = 0.5, focus = 0.5, depthTilt = false, annotations = false } = controls;
+  const canvasCenter = { x: 500, y: 500 };
+
+  const tiltAngle = prng.range(0, Math.PI);
+  const squash = prng.range(0.45, 0.85);
+  const shear = prng.range(-0.15, 0.15);
+
+  function transformPt(pt) {
+    if (!depthTilt) return pt;
+    return applyPlaneTilt(pt, tiltAngle, squash, shear, canvasCenter);
+  }
+
+  // Origin point
+  let origin = { x: canvasCenter.x, y: canvasCenter.y };
+  if (focus < 0.6) {
+    // Off-center origin
+    const offsetMag = (1 - focus) * 120;
+    const offsetAngle = prng.range(0, Math.PI * 2);
+    origin.x += offsetMag * Math.cos(offsetAngle);
+    origin.y += offsetMag * Math.sin(offsetAngle);
+  }
+
+  const rayCount = Math.round(12 + complexity * 58); // 12 to 70 rays
+  const isHalfPlane = (symmetry < 0.35) || prng.boolean(0.25);
+  const spreadAngle = isHalfPlane ? Math.PI * prng.range(0.7, 1.2) : Math.PI * 2;
+  const baseAngle = prng.range(0, Math.PI * 2);
+  const arrowFilled = prng.boolean(0.4);
+  const maxRayLen = 420 * (0.5 + 0.5 * complexity);
+
+  const rays = [];
+
+  for (let i = 0; i < rayCount; i++) {
+    // Jittered even spread
+    const frac = i / rayCount;
+    let angle = baseAngle + frac * spreadAngle;
+    if (symmetry < 0.8) {
+      const jitter = (1 - symmetry) * (spreadAngle / rayCount) * 0.8;
+      angle += prng.range(-jitter, jitter);
+    }
+
+    // Skewed length distribution (power law: mostly short, few long rays)
+    const u = prng.next();
+    const lengthFrac = Math.pow(u, 2.5); // Skewed toward 0
+    const len = 40 + lengthFrac * (maxRayLen - 40);
+
+    const tip = {
+      x: origin.x + len * Math.cos(angle),
+      y: origin.y + len * Math.sin(angle)
+    };
+
+    rays.push({ angle, len, tip });
+
+    // Draw ray path
+    const p1 = transformPt(origin);
+    const p2 = transformPt(tip);
+    const isAccent = (lengthFrac > 0.85 && prng.boolean(0.5));
+
+    scene.addPath([p1, p2], {
+      role: isAccent ? 'accent' : 'structure',
+      allowOvershoot: true,
+      isAccent,
+      seed: prng.rangeInt(0, 1000000)
+    });
+
+    // Arrowhead or dot at tip
+    const transformedTip = p2;
+    const rayAngle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+
+    if (prng.boolean(0.45) || annotations) {
+      scene.addArrow(transformedTip.x, transformedTip.y, rayAngle, prng.range(6, 9), {
+        filled: arrowFilled,
+        role: 'arrows'
+      });
+    } else if (prng.boolean(0.5)) {
+      scene.addDot(transformedTip.x, transformedTip.y, prng.range(2, 3.5), {
+        filled: prng.boolean(0.7),
+        role: 'nodes'
+      });
+    }
+  }
+
+  // Broken concentric detector arcs
+  const arcCount = Math.round(2 + complexity * 4);
+  for (let a = 1; a <= arcCount; a++) {
+    const arcR = (maxRayLen / (arcCount + 1)) * a;
+    const numSegments = prng.rangeInt(3, 7);
+
+    for (let s = 0; s < numSegments; s++) {
+      if (prng.boolean(0.35)) continue; // Broken gaps
+      const segStart = (s / numSegments) * Math.PI * 2 + prng.range(-0.1, 0.1);
+      const segLen = (Math.PI * 2 / numSegments) * prng.range(0.4, 0.75);
+      const segEnd = segStart + segLen;
+
+      const pts = sampleArc(origin.x, origin.y, arcR, segStart, segEnd, 24).map(transformPt);
+      scene.addPath(pts, {
+        role: 'structure',
+        isClosed: false,
+        allowOvershoot: false,
+        seed: prng.rangeInt(0, 1000000)
+      });
+    }
+  }
+
+  // Origin collision node (nucleus scattering center)
+  const tOrigin = transformPt(origin);
+  scene.addDot(tOrigin.x, tOrigin.y, 4.5, { filled: true, role: 'nodes', isGlow: true });
+  scene.hasNucleusOrCenterDot = true;
+
+  // Annotations: circular calibrated detector ring
+  if (annotations) {
+    const outerR = maxRayLen * 1.05;
+    const ringPts = sampleArc(origin.x, origin.y, outerR, 0, Math.PI * 2, 64).map(transformPt);
+    scene.addPath(ringPts, { role: 'guides', isClosed: true, allowBreak: false });
+
+    // Ticks around outer ring
+    const numTicks = 24;
+    for (let t = 0; t < numTicks; t++) {
+      const a = (t / numTicks) * Math.PI * 2;
+      const t1 = transformPt({ x: origin.x + (outerR - 5) * Math.cos(a), y: origin.y + (outerR - 5) * Math.sin(a) });
+      const t2 = transformPt({ x: origin.x + (outerR + 5) * Math.cos(a), y: origin.y + (outerR + 5) * Math.sin(a) });
+      scene.addTick(t1.x, t1.y, t2.x, t2.y, { role: 'guides' });
+    }
+  }
+
+  scene.enforceAtomHint(prng);
+  return scene;
+}
+
+/**
+ * Generator 6: Wireframe
+ * Sphere, ellipsoid, or torus as 3 to 18 latitude, longitude, or great-circle rings,
+ * rotated in 3D and projected flat. Ring parts on far side (z < 0) are dotted/hidden.
+ * Tilt and annotation rule:
+ * - Tilt ON + Annotation OFF: removes far side entirely.
+ * - Tilt ON + Annotation ON: shows far side dotted (role: 'hidden').
+ * - Tilt OFF: 2D front view with both front/back or flat projection.
+ */
+
+
+
+
+function generateWireframe(prng, controls) {
+  const scene = new Scene();
+  scene.hasLatticeNodes = true;
+
+  const { complexity = 0.5, symmetry = 0.5, focus = 0.5, depthTilt = false, annotations = false } = controls;
+  const canvasCenter = { x: 500, y: 500, z: 0 };
+
+  const form = prng.choice(['sphere', 'ellipsoid', 'torus']);
+  const ringCount = Math.round(3 + complexity * 15); // 3 to 18 rings
+  const baseRadius = 360 * (0.55 + 0.45 * complexity);
+
+  // Rotation angles
+  let pitch = 0, yaw = 0, roll = 0;
+  if (depthTilt) {
+    // 20 to 70 degrees
+    pitch = prng.range(0.35, 1.22); // ~20 to 70 deg
+    yaw = prng.range(0.35, 1.22);
+    roll = prng.range(-0.35, 0.35);
+  } else {
+    // Minimal or zero rotation
+    pitch = 0.1;
+    yaw = 0.1;
+    roll = 0;
+  }
+
+  const rotMatrix = Matrix3D.createRotation(pitch, yaw, roll);
+
+  // Form-specific ring generation
+  const all3DRings = [];
+
+  if (form === 'sphere' || form === 'ellipsoid') {
+    const rx = baseRadius;
+    const ry = (form === 'ellipsoid') ? baseRadius * prng.range(0.65, 1.35) : baseRadius;
+    const rz = baseRadius;
+
+    // Latitude circles (parallel rings along Y)
+    const latCount = Math.max(2, Math.round(ringCount / 2));
+    for (let i = 1; i <= latCount; i++) {
+      const v = (i / (latCount + 1)) * Math.PI - Math.PI / 2; // -pi/2 to pi/2
+      const ringRy = ry * Math.sin(v);
+      const ringR = Math.cos(v);
+      const ringRx = rx * ringR;
+      const ringRz = rz * ringR;
+
+      const ringPts = [];
+      const steps = 72;
+      for (let s = 0; s <= steps; s++) {
+        const theta = (s / steps) * Math.PI * 2;
+        ringPts.push({
+          x: canvasCenter.x + ringRx * Math.cos(theta),
+          y: canvasCenter.y + ringRy,
+          z: canvasCenter.z + ringRz * Math.sin(theta)
+        });
+      }
+      all3DRings.push({ points: ringPts, isAccent: (i === 1 && prng.boolean(0.5)) });
+    }
+
+    // Longitude circles (meridians)
+    const lonCount = Math.max(2, Math.round(ringCount / 2));
+    for (let j = 0; j < lonCount; j++) {
+      const phi = (j / lonCount) * Math.PI;
+      const ringPts = [];
+      const steps = 72;
+      for (let s = 0; s <= steps; s++) {
+        const theta = (s / steps) * Math.PI * 2;
+        // Meridian in X-Y plane rotated by phi around Y
+        const mx = rx * Math.cos(theta);
+        const my = ry * Math.sin(theta);
+        const mz = 0;
+
+        const x = mx * Math.cos(phi) - mz * Math.sin(phi);
+        const z = mx * Math.sin(phi) + mz * Math.cos(phi);
+
+        ringPts.push({
+          x: canvasCenter.x + x,
+          y: canvasCenter.y + my,
+          z: canvasCenter.z + z
+        });
+      }
+      all3DRings.push({ points: ringPts, isAccent: false });
+    }
+  } else {
+    // Torus
+    const R = baseRadius * 0.65; // Major radius
+    const r = baseRadius * 0.32; // Minor tube radius
+    const circles = ringCount;
+
+    for (let c = 0; c < circles; c++) {
+      const u = (c / circles) * Math.PI * 2;
+      const ringPts = [];
+      const steps = 60;
+      for (let s = 0; s <= steps; s++) {
+        const v = (s / steps) * Math.PI * 2;
+        const x = (R + r * Math.cos(v)) * Math.cos(u);
+        const y = r * Math.sin(v);
+        const z = (R + r * Math.cos(v)) * Math.sin(u);
+
+        ringPts.push({
+          x: canvasCenter.x + x,
+          y: canvasCenter.y + y,
+          z: canvasCenter.z + z
+        });
+      }
+      all3DRings.push({ points: ringPts, isAccent: (c === 0) });
+    }
+  }
+
+  // Rotate and partition each ring into front (z >= 0) and back (z < 0)
+  for (const ring of all3DRings) {
+    const rotated = ring.points.map(pt => Matrix3D.transformPoint(pt, rotMatrix, canvasCenter));
+
+    // Split into segments of same visibility (z >= 0 vs z < 0)
+    let currentSegment = [];
+    let currentIsFront = rotated[0].z >= 0;
+
+    for (let i = 0; i < rotated.length; i++) {
+      const pt = rotated[i];
+      const isFront = pt.z >= 0;
+
+      if (isFront === currentIsFront) {
+        currentSegment.push(pt);
+      } else {
+        // Crossed hemisphere boundary: interpolate crossing point at z = 0
+        const prev = rotated[i - 1];
+        const t = (0 - prev.z) / (pt.z - prev.z);
+        const crossPt = {
+          x: prev.x + (pt.x - prev.x) * t,
+          y: prev.y + (pt.y - prev.y) * t,
+          z: 0
+        };
+        currentSegment.push(crossPt);
+
+        // Emit current segment
+        emitSegment(currentSegment, currentIsFront, ring.isAccent);
+
+        // Start new segment with crossPt
+        currentSegment = [crossPt, pt];
+        currentIsFront = isFront;
+      }
+    }
+    if (currentSegment.length >= 2) {
+      emitSegment(currentSegment, currentIsFront, ring.isAccent);
+    }
+  }
+
+  function emitSegment(points, isFront, isAccent) {
+    if (points.length < 2) return;
+    const projPoints = points.map(p => ({ x: p.x, y: p.y }));
+
+    if (isFront) {
+      scene.addPath(projPoints, {
+        role: isAccent ? 'accent' : 'structure',
+        isClosed: false,
+        allowOvershoot: false,
+        isAccent,
+        seed: prng.rangeInt(0, 1000000)
+      });
+    } else {
+      // Far side behavior:
+      // If depthTilt ON + annotations OFF: remove far side entirely
+      // If depthTilt ON + annotations ON: show as dotted (hidden role)
+      if (depthTilt && !annotations) {
+        // Discard far side
+        return;
+      }
+      scene.addPath(projPoints, {
+        role: 'hidden',
+        isClosed: false,
+        allowOvershoot: false,
+        seed: prng.rangeInt(0, 1000000)
+      });
+    }
+  }
+
+  // Crossing points / nodes
+  const nodeCount = Math.round(4 + complexity * 12);
+  for (let n = 0; n < nodeCount; n++) {
+    const angle = prng.range(0, Math.PI * 2);
+    const r = baseRadius * prng.range(0.3, 0.9);
+    const pt3D = {
+      x: canvasCenter.x + r * Math.cos(angle),
+      y: canvasCenter.y + r * Math.sin(angle),
+      z: 0
+    };
+    const rot = Matrix3D.transformPoint(pt3D, rotMatrix, canvasCenter);
+    if (rot.z >= -20) {
+      scene.addDot(rot.x, rot.y, prng.range(2.2, 3.5), { filled: prng.boolean(0.75), role: 'nodes' });
+    }
+  }
+
+  // Center axes with tick marks and rotation arrows
+  if (annotations || prng.boolean(0.5)) {
+    const axisLen = baseRadius * 1.15;
+    const axisZ = [
+      { x: canvasCenter.x, y: canvasCenter.y - axisLen, z: 0 },
+      { x: canvasCenter.x, y: canvasCenter.y + axisLen, z: 0 }
+    ].map(p => Matrix3D.transformPoint(p, rotMatrix, canvasCenter));
+
+    scene.addPath([{ x: axisZ[0].x, y: axisZ[0].y }, { x: axisZ[1].x, y: axisZ[1].y }], {
+      role: 'guides',
+      allowOvershoot: false
+    });
+
+    // Ticks along central axis
+    for (let t = -4; t <= 4; t++) {
+      if (t === 0) continue;
+      const frac = t / 5;
+      const tY = canvasCenter.y + frac * baseRadius;
+      const t1 = Matrix3D.transformPoint({ x: canvasCenter.x - 5, y: tY, z: 0 }, rotMatrix, canvasCenter);
+      const t2 = Matrix3D.transformPoint({ x: canvasCenter.x + 5, y: tY, z: 0 }, rotMatrix, canvasCenter);
+      scene.addTick(t1.x, t1.y, t2.x, t2.y, { role: 'guides' });
+    }
+
+    // Curved rotation arrow around north pole
+    const polePt = axisZ[0];
+    const arrowArc = [];
+    const arcR = 30;
+    for (let a = 0; a <= 20; a++) {
+      const ang = (a / 20) * Math.PI * 1.4;
+      arrowArc.push({
+        x: polePt.x + arcR * Math.cos(ang),
+        y: polePt.y + arcR * Math.sin(ang) * 0.4
+      });
+    }
+    scene.addPath(arrowArc, { role: 'guides', allowOvershoot: false });
+    const tip = arrowArc[arrowArc.length - 1];
+    const prev = arrowArc[arrowArc.length - 2];
+    const arrowAngle = Math.atan2(tip.y - prev.y, tip.x - prev.x);
+    scene.addArrow(tip.x, tip.y, arrowAngle, 7, { filled: false, role: 'arrows' });
+  }
+
+  // Atom hint: Center cage nucleus
+  scene.addDot(canvasCenter.x, canvasCenter.y, 4, { filled: true, role: 'nodes', isGlow: true });
+  scene.hasNucleusOrCenterDot = true;
+
+  scene.enforceAtomHint(prng);
+  return scene;
+}
+
+/**
+ * Generator 7: Orbit Systems
+ * 2 to 6 ellipses with random eccentricity (0.2 to 0.9) and rotation,
+ * dots riding the paths, arrowheads on some, hollow marker circles scattered around.
+ *
+ * Profiles:
+ * - Field orbit (default): all ellipses sharing one focus like Keplerian comet orbits, no central nucleus ball.
+ * - Bohr profile (drawn in ~1 of 8 orbit patterns, with strict guardrails):
+ *   - Orbits are open arcs covering 55 to 85 percent of the ellipse, never closed.
+ *   - Tilts and sizes are irregular (never a trio of identical ellipses at even angles).
+ *   - Dots sit on arcs only, unevenly spaced, tiny nucleus dot or left out.
+ *   - At most one orbit is bold.
+ */
+
+
+
+
+function generateOrbitSystem(prng, controls) {
+  const scene = new Scene();
+  scene.hasDotRidingCurve = true;
+
+  const { complexity = 0.5, symmetry = 0.5, focus = 0.5, depthTilt = false, annotations = false } = controls;
+  const canvasCenter = { x: 500, y: 500 };
+
+  const tiltAngle = prng.range(0, Math.PI);
+  const squash = prng.range(0.45, 0.85);
+  const shear = prng.range(-0.15, 0.15);
+
+  function transformPt(pt) {
+    if (!depthTilt) return pt;
+    return applyPlaneTilt(pt, tiltAngle, squash, shear, canvasCenter);
+  }
+
+  // Profile selection: Bohr in ~1 of 8 (~12.5%)
+  const isBohrProfile = prng.boolean(0.125);
+  const orbitCount = isBohrProfile
+    ? Math.round(3 + complexity * 2) // 3 to 5 for Bohr
+    : Math.round(2 + complexity * 4); // 2 to 6 for Field orbit
+
+  const bleed = prng.boolean(0.5); // Large arcs may bleed off frame
+  const maxSemiMajor = bleed ? 480 : 380;
+  const accentOrbitIndex = prng.rangeInt(0, orbitCount - 1);
+
+  if (isBohrProfile) {
+    // === Bohr Profile (with strict guardrails) ===
+    // 1. Orbits are open arcs covering 55% to 85% of ellipse, never closed.
+    // 2. Irregular tilts and sizes (no symmetric trio at 120 deg).
+    // 3. Dots sit on arcs only, unevenly spaced, no glossy nucleus ball.
+    // 4. At most one orbit is bold.
+
+    const baseSizes = [0.45, 0.65, 0.85, 1.0, 1.15].slice(0, orbitCount);
+
+    for (let i = 0; i < orbitCount; i++) {
+      // Irregular sizes with jitter
+      const a = (baseSizes[i] || (0.4 + i * 0.2)) * maxSemiMajor * prng.range(0.85, 1.15);
+      const eccentricity = prng.range(0.35, 0.75);
+      const b = a * Math.sqrt(1 - eccentricity * eccentricity);
+
+      // Irregular rotation angle (avoid even division)
+      const rotAngle = prng.range(0, Math.PI * 2);
+
+      // Open arc covering 55% to 85%
+      const arcCoverage = prng.range(0.55, 0.85) * Math.PI * 2;
+      const startAngle = prng.range(0, Math.PI * 2);
+      const endAngle = startAngle + arcCoverage;
+
+      const raw = sampleEllipse(canvasCenter.x, canvasCenter.y, a, b, rotAngle, startAngle, endAngle, 80);
+      const transformed = raw.map(transformPt);
+      const isAccent = (i === accentOrbitIndex);
+
+      scene.addPath(transformed, {
+        role: isAccent ? 'accent' : 'structure',
+        isClosed: false,
+        allowOvershoot: true,
+        isAccent,
+        seed: prng.rangeInt(0, 1000000)
+      });
+
+      // Dots unevenly spaced riding along the arc
+      const dotCount = prng.rangeInt(1, 3);
+      for (let d = 0; d < dotCount; d++) {
+        const idx = Math.floor(prng.range(0.15, 0.85) * transformed.length);
+        const dotPt = transformed[idx];
+        scene.addDot(dotPt.x, dotPt.y, prng.range(2.5, 4.0), {
+          filled: prng.boolean(0.8),
+          role: 'nodes'
+        });
+      }
+
+      // Arrowhead on arc tip
+      if (annotations || prng.boolean(0.4)) {
+        const tip = transformed[transformed.length - 1];
+        const prev = transformed[transformed.length - 2];
+        const arrAngle = Math.atan2(tip.y - prev.y, tip.x - prev.x);
+        scene.addArrow(tip.x, tip.y, arrAngle, 7.5, { filled: false, role: 'arrows' });
+      }
+    }
+
+    // Tiny nucleus dot or left out (no glossy ball)
+    if (prng.boolean(0.5)) {
+      const c = transformPt(canvasCenter);
+      scene.addDot(c.x, c.y, 2.2, { filled: true, role: 'nodes' });
+    }
+
+  } else {
+    // === Field Orbit Profile (Default) ===
+    // All ellipses share ONE common focus (like Keplerian comets)
+    // No central nucleus drawn; focus can be offset by focus control
+
+    const focusOffset = 120 * (1 - focus * 0.5);
+    const sharedFocus = {
+      x: canvasCenter.x - focusOffset * 0.5,
+      y: canvasCenter.y + focusOffset * 0.3
+    };
+
+    for (let i = 0; i < orbitCount; i++) {
+      const a = (0.35 + (i / orbitCount) * 0.65) * maxSemiMajor;
+      const eccentricity = prng.range(0.4, 0.88);
+      const b = a * Math.sqrt(1 - eccentricity * eccentricity);
+      const cDist = a * eccentricity; // Linear eccentricity (distance from center to focus)
+
+      const orbitRot = prng.range(0, Math.PI * 2);
+
+      // The center of this ellipse is placed so that one focus is at sharedFocus
+      const ellipseCenter = {
+        x: sharedFocus.x - cDist * Math.cos(orbitRot),
+        y: sharedFocus.y - cDist * Math.sin(orbitRot)
+      };
+
+      const isClosed = prng.boolean(0.5);
+      const startAngle = isClosed ? 0 : prng.range(0, Math.PI * 0.5);
+      const endAngle = isClosed ? Math.PI * 2 : startAngle + prng.range(Math.PI * 1.2, Math.PI * 1.95);
+
+      const raw = sampleEllipse(ellipseCenter.x, ellipseCenter.y, a, b, orbitRot, startAngle, endAngle, 80);
+      const transformed = raw.map(transformPt);
+      const isAccent = (i === accentOrbitIndex);
+
+      scene.addPath(transformed, {
+        role: isAccent ? 'accent' : 'structure',
+        isClosed,
+        allowOvershoot: !isClosed,
+        isAccent,
+        seed: prng.rangeInt(0, 1000000)
+      });
+
+      // Dots riding the path
+      const dotsOnOrbit = prng.rangeInt(1, 4);
+      for (let d = 0; d < dotsOnOrbit; d++) {
+        const sampleIdx = Math.floor(prng.range(0.1, 0.9) * transformed.length);
+        const p = transformed[sampleIdx];
+        scene.addDot(p.x, p.y, prng.range(2.2, 3.8), { filled: prng.boolean(0.7), role: 'nodes' });
+      }
+
+      // Arrowhead on some orbits
+      if (transformed.length >= 3 && (annotations || prng.boolean(0.4))) {
+        const tipIdx = isClosed ? Math.floor(transformed.length * 0.75) : transformed.length - 1;
+        const tip = transformed[tipIdx];
+        const prev = transformed[tipIdx - 1];
+        const arrAngle = Math.atan2(tip.y - prev.y, tip.x - prev.x);
+        scene.addArrow(tip.x, tip.y, arrAngle, 7.5, { filled: false, role: 'arrows' });
+      }
+    }
+
+    // Hollow marker circles scattered around
+    const markerCount = prng.rangeInt(2, 6);
+    for (let m = 0; m < markerCount; m++) {
+      const dist = prng.range(60, maxSemiMajor * 0.9);
+      const ang = prng.range(0, Math.PI * 2);
+      const mPt = transformPt({
+        x: sharedFocus.x + dist * Math.cos(ang),
+        y: sharedFocus.y + dist * Math.sin(ang)
+      });
+      scene.addDot(mPt.x, mPt.y, prng.range(3, 5), { filled: false, role: 'nodes' });
+    }
+
+    // Shared focus marker
+    const tf = transformPt(sharedFocus);
+    scene.addDot(tf.x, tf.y, 3, { filled: true, role: 'nodes' });
+  }
+
+  // Guide axes or tangent rays
+  if (annotations) {
+    const p1 = transformPt({ x: canvasCenter.x - maxSemiMajor * 1.05, y: canvasCenter.y });
+    const p2 = transformPt({ x: canvasCenter.x + maxSemiMajor * 1.05, y: canvasCenter.y });
+    scene.addPath([p1, p2], { role: 'guides', allowOvershoot: false });
+  }
+
+  scene.enforceAtomHint(prng);
+  return scene;
+}
+
+/**
+ * Generator registry and dispatcher
+ */
+
+
+
+
+
+
+
+
+
+const GENERATOR_FAMILIES = {
+  rosettes: {
+    id: 'rosettes',
+    name: 'Rosettes and circle lattices',
+    generate: generateRosette,
+    defaultRefs: 6
+  },
+  tangent_chains: {
+    id: 'tangent_chains',
+    name: 'Tangent chains and spirals',
+    generate: generateTangentChain,
+    defaultRefs: 4
+  },
+  lobes: {
+    id: 'lobes',
+    name: 'Lobes and envelopes',
+    generate: generateLobes,
+    defaultRefs: 3
+  },
+  field_lines: {
+    id: 'field_lines',
+    name: 'Field lines',
+    generate: generateFieldLines,
+    defaultRefs: 3
+  },
+  particle_bursts: {
+    id: 'particle_bursts',
+    name: 'Particle bursts',
+    generate: generateParticleBurst,
+    defaultRefs: 2
+  },
+  wireframes: {
+    id: 'wireframes',
+    name: 'Wireframes',
+    generate: generateWireframe,
+    defaultRefs: 4
+  },
+  orbit_systems: {
+    id: 'orbit_systems',
+    name: 'Orbit systems',
+    generate: generateOrbitSystem,
+    defaultRefs: 3
+  }
+};
+
+function generateScene(familyId, prng, controls) {
+  const family = GENERATOR_FAMILIES[familyId] || GENERATOR_FAMILIES.rosettes;
+  return family.generate(prng, controls);
+}
+
+/**
+ * Finish Pipeline
+ * Restyles the existing Scene intermediate representation into rendered visual primitives.
+ * Fixed chain of steps:
+ * 1. Flatten
+ * 2. Overshoot
+ * 3. Line breaks
+ * 4. Roughness (smooth noise + fine jitter + faint 2nd redraw pass)
+ * 5. Weight variation (chunked paths with varying stroke-width)
+ * 6. Emit smooth cubic bezier paths
+ */
+
+
+
+function runFinishPipeline(scene, finishControls) {
+  const {
+    roughness = 0,         // 0 (clean) to 1 (rough)
+    lineBreaks = 0,        // 0 to 1
+    strokeWeight = 1.4,    // 0.6 to 6 px, default 1.4
+    weightVariation = 0,   // 0 (uniform) to 1 (varied)
+    overshoot = 0          // 0 to 1
+  } = finishControls;
+
+  const outputPaths = [];
+  const outputDots = scene.dots.slice();
+  const outputArrows = scene.arrows.slice();
+  const outputStars = scene.stars.slice();
+  const outputTicks = scene.ticks.slice();
+
+  for (const pathObj of scene.paths) {
+    const rawPts = pathObj.points;
+    if (!rawPts || rawPts.length < 2) continue;
+
+    const baseSeed = pathObj.seed || 12345;
+    const prng = createPRNG(baseSeed);
+    const noise = createNoise(baseSeed ^ 0xabcdef);
+
+    // 1. Flatten: resample to uniform spacing (~6px)
+    let pts = resamplePolyline(rawPts, 6);
+    if (pts.length < 2) continue;
+
+    // 2. Overshoot: extend open ends
+    if (overshoot > 0.01 && pathObj.allowOvershoot && !pathObj.isClosed) {
+      pts = applyOvershoot(pts, overshoot, prng);
+    }
+
+    // 3. Line breaks: cut gaps into paths
+    let subPaths = [pts];
+    if (lineBreaks > 0.01 && pathObj.allowBreak) {
+      subPaths = applyLineBreaks(pts, lineBreaks, prng);
+    }
+
+    // Process each sub-path through Roughness and Weight Variation
+    for (const sub of subPaths) {
+      if (sub.length < 2) continue;
+
+      // 4. Roughness
+      const roughRes = applyRoughness(sub, roughness, noise, prng);
+
+      // Base stroke width for this path
+      const baseWidth = pathObj.isAccent ? strokeWeight * 2.2 : strokeWeight;
+
+      // 5. Weight variation & emitting
+      emitPathWithWeightVariation(
+        roughRes.main,
+        pathObj,
+        baseWidth,
+        weightVariation,
+        prng,
+        outputPaths
+      );
+
+      // Faint second pass (if roughness > 0.5)
+      if (roughRes.secondPass) {
+        emitPathWithWeightVariation(
+          roughRes.secondPass,
+          { ...pathObj, isAccent: false },
+          baseWidth * 0.6,
+          weightVariation * 0.5,
+          prng,
+          outputPaths,
+          0.65 // opacity
+        );
+      }
+    }
+  }
+
+  return {
+    paths: outputPaths,
+    dots: outputDots,
+    arrows: outputArrows,
+    stars: outputStars,
+    ticks: outputTicks
+  };
+}
+
+// Overshoot extension
+function applyOvershoot(points, overshootAmount, prng) {
+  const n = points.length;
+  if (n < 2) return points;
+
+  // Calculate approximate path length
+  let totalLen = 0;
+  for (let i = 0; i < n - 1; i++) totalLen += Vec2.dist(points[i], points[i + 1]);
+
+  // Up to 6% of length
+  const extLen = totalLen * 0.06 * overshootAmount;
+  if (extLen < 1) return points;
+
+  const res = points.slice();
+
+  // Extend start
+  const vStart = Vec2.normalize(Vec2.sub(points[0], points[1]));
+  const startExt = Vec2.add(points[0], Vec2.scale(vStart, extLen * prng.range(0.7, 1.2)));
+  res.unshift(startExt);
+
+  // Extend end
+  const vEnd = Vec2.normalize(Vec2.sub(points[n - 1], points[n - 2]));
+  const endExt = Vec2.add(points[n - 1], Vec2.scale(vEnd, extLen * prng.range(0.7, 1.2)));
+  res.push(endExt);
+
+  return res;
+}
+
+// Line breaks
+function applyLineBreaks(points, breakAmount, prng) {
+  const n = points.length;
+  if (n < 6) return [points];
+
+  // Calculate cumulative lengths
+  const cumLen = [0];
+  for (let i = 0; i < n - 1; i++) {
+    cumLen.push(cumLen[i] + Vec2.dist(points[i], points[i + 1]));
+  }
+  const totalLen = cumLen[n - 1];
+  if (totalLen < 60) return [points];
+
+  // Up to 6 gaps per 1000px
+  const maxGaps = Math.max(1, Math.round((totalLen / 1000) * 6 * breakAmount));
+  const numGaps = prng.rangeInt(1, maxGaps);
+
+  // Pick gap intervals [startDist, endDist]
+  const intervals = [];
+  for (let g = 0; g < numGaps; g++) {
+    const center = prng.range(totalLen * 0.12, totalLen * 0.88);
+    const gapLen = prng.range(6, 40) * breakAmount;
+    intervals.push({ start: center - gapLen / 2, end: center + gapLen / 2 });
+  }
+
+  // Sort and merge intervals
+  intervals.sort((a, b) => a.start - b.start);
+  const merged = [];
+  for (const iv of intervals) {
+    if (merged.length === 0 || merged[merged.length - 1].end < iv.start) {
+      merged.push(iv);
+    } else {
+      merged[merged.length - 1].end = Math.max(merged[merged.length - 1].end, iv.end);
+    }
+  }
+
+  // Partition polyline by intervals
+  const subPaths = [];
+  let currentSub = [];
+  let ivIdx = 0;
+
+  for (let i = 0; i < n; i++) {
+    const d = cumLen[i];
+    const inGap = (ivIdx < merged.length && d >= merged[ivIdx].start && d <= merged[ivIdx].end);
+
+    if (inGap) {
+      if (currentSub.length >= 2) {
+        subPaths.push(currentSub);
+      }
+      currentSub = [];
+    } else {
+      currentSub.push(points[i]);
+      if (ivIdx < merged.length && d > merged[ivIdx].end) {
+        ivIdx++;
+      }
+    }
+  }
+
+  if (currentSub.length >= 2) {
+    subPaths.push(currentSub);
+  }
+
+  return subPaths.length > 0 ? subPaths : [points];
+}
+
+// Roughness displacement & 2nd pass
+function applyRoughness(points, roughness, noise, prng) {
+  if (roughness <= 0.01) {
+    return { main: points, secondPass: null };
+  }
+
+  const n = points.length;
+  const mainPts = [];
+  const secondPts = roughness > 0.5 ? [] : null;
+
+  for (let i = 0; i < n; i++) {
+    const p = points[i];
+
+    // Compute tangent and normal
+    let tx = 0, ty = 0;
+    if (i === 0) {
+      tx = points[1].x - p.x;
+      ty = points[1].y - p.y;
+    } else if (i === n - 1) {
+      tx = p.x - points[n - 2].x;
+      ty = p.y - points[n - 2].y;
+    } else {
+      tx = points[i + 1].x - points[i - 1].x;
+      ty = points[i + 1].y - points[i - 1].y;
+    }
+
+    const len = Math.hypot(tx, ty);
+    const nx = len === 0 ? 0 : -ty / len;
+    const ny = len === 0 ? 0 : tx / len;
+
+    // Smooth noise displacement up to 3.5px
+    const smoothDisp = noise.noise1D(i * 0.08) * 3.5 * roughness;
+
+    // Fine jitter above 0.6
+    let jitter = 0;
+    if (roughness > 0.6) {
+      const jitterScale = (roughness - 0.6) / 0.4;
+      jitter = prng.range(-1.2, 1.2) * jitterScale;
+    }
+
+    const disp = smoothDisp + jitter;
+    mainPts.push({
+      x: p.x + nx * disp,
+      y: p.y + ny * disp
+    });
+
+    // Faint second pass (above 0.5, offset 1 to 3px)
+    if (secondPts) {
+      const offset = prng.range(1.0, 3.0) * (prng.boolean() ? 1 : -1);
+      const secondNoise = noise.noise1D(i * 0.08 + 100) * 2.0;
+      secondPts.push({
+        x: p.x + nx * (offset + secondNoise),
+        y: p.y + ny * (offset + secondNoise)
+      });
+    }
+  }
+
+  return { main: mainPts, secondPass: secondPts };
+}
+
+// Weight variation & Bezier emitting
+function emitPathWithWeightVariation(points, pathMeta, baseWidth, weightVariation, prng, outputPaths, opacity = 1) {
+  if (points.length < 2) return;
+
+  // Downsample slightly for bezier fitting (< 3000 anchors target)
+  const sampled = resamplePolyline(points, 12);
+  if (sampled.length < 2) return;
+
+  if (weightVariation <= 0.01) {
+    // Single uniform stroke
+    const d = catmullRomToBeziers(sampled);
+    outputPaths.push({
+      d,
+      role: pathMeta.role,
+      strokeWidth: baseWidth,
+      opacity,
+      isDashed: pathMeta.role === 'hidden'
+    });
+    return;
+  }
+
+  // Weight variation: cut into 8 to 24 chunks whose width swings up to 60% along a smooth curve
+  const chunkCount = Math.min(sampled.length - 1, Math.round(8 + weightVariation * 16));
+  const ptsPerChunk = Math.max(2, Math.floor(sampled.length / chunkCount));
+
+  for (let c = 0; c < chunkCount; c++) {
+    const startIdx = c * ptsPerChunk;
+    const endIdx = (c === chunkCount - 1) ? sampled.length : Math.min(sampled.length, (c + 1) * ptsPerChunk + 1);
+    const chunkPts = sampled.slice(startIdx, endIdx);
+    if (chunkPts.length < 2) continue;
+
+    // Swing up to 60%
+    const t = c / chunkCount;
+    const swing = Math.sin(t * Math.PI * 3) * 0.6 * weightVariation;
+    const chunkWidth = Math.max(0.4, baseWidth * (1 + swing));
+
+    const d = catmullRomToBeziers(chunkPts);
+    outputPaths.push({
+      d,
+      role: pathMeta.role,
+      strokeWidth: chunkWidth,
+      opacity,
+      isDashed: pathMeta.role === 'hidden'
+    });
+  }
+}
+
+/**
+ * SVG Writer for Figma Compatibility
+ *
+ * Rules:
+ * - Square 1000 by 1000 viewBox with no background
+ * - Everything is black stroke (#000000) with fill="none", round caps & joins
+ * - Dots are filled circles (fill="#000000" stroke="none")
+ * - Six named groups: structure, accent, nodes, arrows, hidden, guides
+ */
+
+function writeSVG(rendered, options = {}) {
+  const {
+    strokeColor = '#000000',
+    fillColor = '#000000'
+  } = options;
+
+  // Buckets for the six named groups
+  const groups = {
+    structure: [],
+    accent: [],
+    nodes: [],
+    arrows: [],
+    hidden: [],
+    guides: []
+  };
+
+  // 1. Group Paths
+  for (const p of rendered.paths) {
+    const role = groups[p.role] ? p.role : 'structure';
+    const width = p.strokeWidth.toFixed(2);
+    const opacityAttr = p.opacity < 1 ? ` opacity="${p.opacity.toFixed(2)}"` : '';
+    const dashAttr = p.isDashed ? ' stroke-dasharray="3,6"' : '';
+
+    groups[role].push(
+      `<path d="${p.d}" stroke="${strokeColor}" stroke-width="${width}" fill="none" stroke-linecap="round" stroke-linejoin="round"${dashAttr}${opacityAttr} />`
+    );
+  }
+
+  // 2. Group Dots & Glows
+  for (const dot of rendered.dots) {
+    const role = groups[dot.role] ? dot.role : 'nodes';
+    const x = dot.x.toFixed(2);
+    const y = dot.y.toFixed(2);
+    const r = dot.r.toFixed(2);
+
+    if (dot.isGlow) {
+      // Glow dot: central solid dot plus faint concentric ring
+      groups[role].push(
+        `<circle cx="${x}" cy="${y}" r="${r}" fill="${fillColor}" stroke="none" />`
+      );
+      groups[role].push(
+        `<circle cx="${x}" cy="${y}" r="${(dot.r * 1.8).toFixed(2)}" fill="none" stroke="${strokeColor}" stroke-width="0.8" opacity="0.6" />`
+      );
+    } else if (dot.filled) {
+      groups[role].push(
+        `<circle cx="${x}" cy="${y}" r="${r}" fill="${fillColor}" stroke="none" />`
+      );
+    } else {
+      // Hollow ring
+      groups[role].push(
+        `<circle cx="${x}" cy="${y}" r="${r}" fill="none" stroke="${strokeColor}" stroke-width="1.2" />`
+      );
+    }
+  }
+
+  // 3. Group Star Nodes
+  for (const star of (rendered.stars || [])) {
+    const role = groups[star.role] ? star.role : 'nodes';
+    const x = star.x;
+    const y = star.y;
+    const s = star.size;
+    // 4-pointed cross star
+    const dStar = `M ${(x - s).toFixed(2)} ${y.toFixed(2)} L ${(x + s).toFixed(2)} ${y.toFixed(2)} M ${x.toFixed(2)} ${(y - s).toFixed(2)} L ${x.toFixed(2)} ${(y + s).toFixed(2)}`;
+    groups[role].push(
+      `<path d="${dStar}" stroke="${strokeColor}" stroke-width="1.2" stroke-linecap="round" fill="none" />`
+    );
+  }
+
+  // 4. Group Arrowheads
+  for (const arr of rendered.arrows) {
+    const role = groups[arr.role] ? arr.role : 'arrows';
+    const x = arr.x;
+    const y = arr.y;
+    const ang = arr.angle;
+    const sz = arr.size;
+
+    // Arrow geometry: point at tip (x, y), two wings swept back by 150 deg (5/6 pi)
+    const wing1Ang = ang + Math.PI * 0.82;
+    const wing2Ang = ang - Math.PI * 0.82;
+    const w1x = (x + sz * Math.cos(wing1Ang)).toFixed(2);
+    const w1y = (y + sz * Math.sin(wing1Ang)).toFixed(2);
+    const w2x = (x + sz * Math.cos(wing2Ang)).toFixed(2);
+    const w2y = (y + sz * Math.sin(wing2Ang)).toFixed(2);
+    const tx = x.toFixed(2);
+    const ty = y.toFixed(2);
+
+    if (arr.filled) {
+      groups[role].push(
+        `<polygon points="${tx},${ty} ${w1x},${w1y} ${w2x},${w2y}" fill="${fillColor}" stroke="none" />`
+      );
+    } else {
+      groups[role].push(
+        `<polyline points="${w1x},${w1y} ${tx},${ty} ${w2x},${w2y}" stroke="${strokeColor}" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round" />`
+      );
+    }
+  }
+
+  // 5. Group Ticks & Guides
+  for (const tick of (rendered.ticks || [])) {
+    const role = groups[tick.role] ? tick.role : 'guides';
+    groups[role].push(
+      `<line x1="${tick.p1.x.toFixed(2)}" y1="${tick.p1.y.toFixed(2)}" x2="${tick.p2.x.toFixed(2)}" y2="${tick.p2.y.toFixed(2)}" stroke="${strokeColor}" stroke-width="1.0" stroke-linecap="round" />`
+    );
+  }
+
+  // Build SVG document
+  let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" width="1000" height="1000">\n`;
+
+  const groupOrder = ['guides', 'hidden', 'structure', 'accent', 'nodes', 'arrows'];
+  for (const gName of groupOrder) {
+    const elements = groups[gName];
+    svg += `  <g id="${gName}" data-name="${gName}">\n`;
+    for (const el of elements) {
+      svg += `    ${el}\n`;
+    }
+    svg += `  </g>\n`;
+  }
+
+  svg += `</svg>`;
+  return svg;
+}
+
+/**
+ * 25 Initial Reference Scores
+ */
+const INITIAL_REFERENCES = [
+  { id: "ref-01", family: "rosettes", complexity: 0.45, symmetry: 0.90, focus: 0.85, depthTilt: false, annotations: false, roughness: 0.15, lineBreaks: 0.05, strokeWeight: 1.4, weightVariation: 0.10, overshoot: 0.05 },
+  { id: "ref-02", family: "rosettes", complexity: 0.60, symmetry: 0.95, focus: 0.90, depthTilt: false, annotations: true,  roughness: 0.20, lineBreaks: 0.00, strokeWeight: 1.2, weightVariation: 0.05, overshoot: 0.00 },
+  { id: "ref-03", family: "rosettes", complexity: 0.35, symmetry: 0.80, focus: 0.75, depthTilt: true,  annotations: false, roughness: 0.30, lineBreaks: 0.10, strokeWeight: 1.6, weightVariation: 0.20, overshoot: 0.10 },
+  { id: "ref-04", family: "rosettes", complexity: 0.70, symmetry: 0.85, focus: 0.80, depthTilt: false, annotations: true,  roughness: 0.25, lineBreaks: 0.15, strokeWeight: 1.4, weightVariation: 0.15, overshoot: 0.05 },
+  { id: "ref-05", family: "rosettes", complexity: 0.50, symmetry: 0.75, focus: 0.70, depthTilt: false, annotations: false, roughness: 0.10, lineBreaks: 0.00, strokeWeight: 1.0, weightVariation: 0.00, overshoot: 0.00 },
+  { id: "ref-06", family: "rosettes", complexity: 0.55, symmetry: 0.90, focus: 0.85, depthTilt: true,  annotations: false, roughness: 0.18, lineBreaks: 0.08, strokeWeight: 1.5, weightVariation: 0.12, overshoot: 0.08 },
+
+  { id: "ref-07", family: "wireframes", complexity: 0.50, symmetry: 0.85, focus: 0.90, depthTilt: true, annotations: true,  roughness: 0.22, lineBreaks: 0.05, strokeWeight: 1.4, weightVariation: 0.15, overshoot: 0.10 },
+  { id: "ref-08", family: "wireframes", complexity: 0.65, symmetry: 0.90, focus: 0.80, depthTilt: true, annotations: true,  roughness: 0.28, lineBreaks: 0.10, strokeWeight: 1.6, weightVariation: 0.20, overshoot: 0.15 },
+  { id: "ref-09", family: "wireframes", complexity: 0.40, symmetry: 0.80, focus: 0.85, depthTilt: true, annotations: false, roughness: 0.15, lineBreaks: 0.00, strokeWeight: 1.2, weightVariation: 0.05, overshoot: 0.00 },
+  { id: "ref-10", family: "wireframes", complexity: 0.75, symmetry: 0.75, focus: 0.75, depthTilt: true, annotations: true,  roughness: 0.35, lineBreaks: 0.12, strokeWeight: 1.8, weightVariation: 0.25, overshoot: 0.20 },
+
+  { id: "ref-11", family: "tangent_chains", complexity: 0.45, symmetry: 0.60, focus: 0.65, depthTilt: false, annotations: false, roughness: 0.20, lineBreaks: 0.08, strokeWeight: 1.4, weightVariation: 0.15, overshoot: 0.12 },
+  { id: "ref-12", family: "tangent_chains", complexity: 0.60, symmetry: 0.70, focus: 0.70, depthTilt: true,  annotations: true,  roughness: 0.25, lineBreaks: 0.12, strokeWeight: 1.5, weightVariation: 0.20, overshoot: 0.18 },
+  { id: "ref-13", family: "tangent_chains", complexity: 0.35, symmetry: 0.50, focus: 0.55, depthTilt: false, annotations: false, roughness: 0.15, lineBreaks: 0.00, strokeWeight: 1.2, weightVariation: 0.10, overshoot: 0.05 },
+  { id: "ref-14", family: "tangent_chains", complexity: 0.70, symmetry: 0.65, focus: 0.60, depthTilt: false, annotations: true,  roughness: 0.30, lineBreaks: 0.15, strokeWeight: 1.6, weightVariation: 0.25, overshoot: 0.22 },
+
+  { id: "ref-15", family: "lobes", complexity: 0.50, symmetry: 0.85, focus: 0.80, depthTilt: false, annotations: false, roughness: 0.18, lineBreaks: 0.05, strokeWeight: 1.4, weightVariation: 0.15, overshoot: 0.05 },
+  { id: "ref-16", family: "lobes", complexity: 0.65, symmetry: 0.90, focus: 0.85, depthTilt: true,  annotations: true,  roughness: 0.22, lineBreaks: 0.08, strokeWeight: 1.6, weightVariation: 0.20, overshoot: 0.10 },
+  { id: "ref-17", family: "lobes", complexity: 0.40, symmetry: 0.75, focus: 0.70, depthTilt: false, annotations: false, roughness: 0.12, lineBreaks: 0.00, strokeWeight: 1.2, weightVariation: 0.05, overshoot: 0.00 },
+
+  { id: "ref-18", family: "field_lines", complexity: 0.55, symmetry: 0.80, focus: 0.75, depthTilt: false, annotations: true,  roughness: 0.25, lineBreaks: 0.10, strokeWeight: 1.4, weightVariation: 0.18, overshoot: 0.12 },
+  { id: "ref-19", family: "field_lines", complexity: 0.70, symmetry: 0.85, focus: 0.80, depthTilt: true,  annotations: true,  roughness: 0.30, lineBreaks: 0.15, strokeWeight: 1.6, weightVariation: 0.22, overshoot: 0.18 },
+  { id: "ref-20", family: "field_lines", complexity: 0.40, symmetry: 0.70, focus: 0.65, depthTilt: false, annotations: false, roughness: 0.15, lineBreaks: 0.00, strokeWeight: 1.2, weightVariation: 0.10, overshoot: 0.05 },
+
+  { id: "ref-21", family: "orbit_systems", complexity: 0.50, symmetry: 0.40, focus: 0.70, depthTilt: true,  annotations: true,  roughness: 0.22, lineBreaks: 0.08, strokeWeight: 1.4, weightVariation: 0.15, overshoot: 0.10 },
+  { id: "ref-22", family: "orbit_systems", complexity: 0.65, symmetry: 0.35, focus: 0.60, depthTilt: false, annotations: false, roughness: 0.18, lineBreaks: 0.05, strokeWeight: 1.3, weightVariation: 0.12, overshoot: 0.08 },
+  { id: "ref-23", family: "orbit_systems", complexity: 0.35, symmetry: 0.50, focus: 0.75, depthTilt: true,  annotations: true,  roughness: 0.28, lineBreaks: 0.12, strokeWeight: 1.6, weightVariation: 0.20, overshoot: 0.15 },
+
+  { id: "ref-24", family: "particle_bursts", complexity: 0.60, symmetry: 0.45, focus: 0.85, depthTilt: false, annotations: true,  roughness: 0.28, lineBreaks: 0.12, strokeWeight: 1.5, weightVariation: 0.18, overshoot: 0.15 },
+  { id: "ref-25", family: "particle_bursts", complexity: 0.45, symmetry: 0.30, focus: 0.70, depthTilt: true,  annotations: false, roughness: 0.20, lineBreaks: 0.05, strokeWeight: 1.3, weightVariation: 0.10, overshoot: 0.08 }
+];
+
+/**
+ * Taste Profile & Learning Loop Engine
+ *
+ * Rules:
+ * - Bayesian / Laplace smoothed family weights initialized from 25 references
+ * - Saved designs move the slider means and variance (spread never below 0.12)
+ * - Checkbox probabilities have 10% floor
+ * - Every 5th "Next" is a Wildcard ignoring the profile
+ * - Skips designs within 0.1 on every control of the last 5 in the same family
+ * - Locked controls preserve their current values
+ * - JSON import & export
+ */
+
+
+
+
+const ALL_FAMILIES = [
+  'rosettes',
+  'wireframes',
+  'tangent_chains',
+  'lobes',
+  'field_lines',
+  'orbit_systems',
+  'particle_bursts'
+];
+
+const SLIDER_KEYS = [
+  'complexity',
+  'symmetry',
+  'focus',
+  'roughness',
+  'lineBreaks',
+  'strokeWeight',
+  'weightVariation',
+  'overshoot'
+];
+
+const CHECKBOX_KEYS = [
+  'depthTilt',
+  'annotations'
+];
+
+class TasteProfileManager {
+  constructor(storageKey = 'atom_pattern_taste_profile') {
+    this.storageKey = storageKey;
+    this.nextCount = 0;
+    this.recentHistory = []; // Last shown designs: { family, controls }
+    this.savedDesigns = [];  // User favorites
+    this.familyNudges = {};  // Manual user nudges
+
+    // Initialize with 25 references
+    this.references = INITIAL_REFERENCES.slice();
+    this.computeStatistics();
+  }
+
+  computeStatistics() {
+    // Combine references and saved designs
+    const corpus = [...this.references, ...this.savedDesigns];
+
+    // Family counts
+    this.familyCounts = {};
+    for (const f of ALL_FAMILIES) this.familyCounts[f] = 0;
+
+    for (const item of corpus) {
+      if (this.familyCounts[item.family] !== undefined) {
+        this.familyCounts[item.family]++;
+      }
+    }
+
+    // Smoothed family weights
+    this.familyWeights = {};
+    const totalCount = corpus.length;
+    for (const f of ALL_FAMILIES) {
+      const nudge = this.familyNudges[f] || 0;
+      // Laplace smoothed: (count + 1) / (total + 7) + nudge
+      const rawWeight = (this.familyCounts[f] + 1) / (totalCount + 7);
+      this.familyWeights[f] = Math.max(0.02, rawWeight + nudge);
+    }
+
+    // Slider statistics: mean and stdDev
+    this.sliderStats = {};
+    for (const key of SLIDER_KEYS) {
+      const values = corpus.map(item => item[key] ?? 0.5);
+      const mean = values.reduce((a, b) => a + b, 0) / values.length;
+      const variance = values.reduce((acc, v) => acc + Math.pow(v - mean, 2), 0) / values.length;
+      const stdDev = Math.max(0.12, Math.sqrt(variance)); // Floor at 0.12
+
+      this.sliderStats[key] = { mean, stdDev };
+    }
+
+    // Checkbox probabilities (floor at 0.10)
+    this.checkboxProbs = {};
+    for (const key of CHECKBOX_KEYS) {
+      const trueCount = corpus.filter(item => !!item[key]).length;
+      const prob = Math.max(0.10, Math.min(0.90, trueCount / corpus.length));
+      this.checkboxProbs[key] = prob;
+    }
+  }
+
+  saveDesign(design) {
+    // Save design with its exact family, seed, and controls
+    const toSave = {
+      id: `fav-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      timestamp: Date.now(),
+      family: design.family,
+      seed: design.seed,
+      complexity: design.controls.complexity,
+      symmetry: design.controls.symmetry,
+      focus: design.controls.focus,
+      depthTilt: design.controls.depthTilt,
+      annotations: design.controls.annotations,
+      roughness: design.controls.roughness,
+      lineBreaks: design.controls.lineBreaks,
+      strokeWeight: design.controls.strokeWeight,
+      weightVariation: design.controls.weightVariation,
+      overshoot: design.controls.overshoot
+    };
+
+    this.savedDesigns.push(toSave);
+    this.computeStatistics();
+    this.persistLocal();
+    return toSave;
+  }
+
+  removeSavedDesign(id) {
+    this.savedDesigns = this.savedDesigns.filter(d => d.id !== id);
+    this.computeStatistics();
+    this.persistLocal();
+  }
+
+  nudgeFamily(familyId, delta) {
+    this.familyNudges[familyId] = (this.familyNudges[familyId] || 0) + delta;
+    this.computeStatistics();
+  }
+
+  resetProfile() {
+    this.savedDesigns = [];
+    this.familyNudges = {};
+    this.computeStatistics();
+    this.persistLocal();
+  }
+
+  generateNext(locks = {}, currentValues = {}, prng = createPRNG(Date.now())) {
+    this.nextCount++;
+    const isWildcard = (this.nextCount % 5 === 0);
+
+    let chosenFamily;
+    let chosenControls;
+
+    // Retry loop for the skip rule
+    for (let attempt = 0; attempt < 10; attempt++) {
+      if (isWildcard) {
+        // Wildcard ignores profile entirely
+        chosenFamily = prng.choice(ALL_FAMILIES);
+        chosenControls = this.sampleWildcardControls(locks, currentValues, prng);
+      } else {
+        // Sample family by smoothed weights
+        const weightsArray = ALL_FAMILIES.map(f => this.familyWeights[f]);
+        chosenFamily = prng.weightedChoice(ALL_FAMILIES, weightsArray);
+        chosenControls = this.sampleProfileControls(locks, currentValues, prng);
+      }
+
+      // Check skip rule: skip if within 0.1 on every control of last 5 in same family
+      const tooClose = this.isTooCloseToRecent(chosenFamily, chosenControls);
+      if (!tooClose) break;
+    }
+
+    const newSeed = prng.rangeInt(100000, 9999999);
+
+    // Record into recent history (keep last 20)
+    this.recentHistory.push({
+      family: chosenFamily,
+      controls: { ...chosenControls },
+      seed: newSeed
+    });
+    if (this.recentHistory.length > 20) this.recentHistory.shift();
+
+    return {
+      family: chosenFamily,
+      seed: newSeed,
+      controls: chosenControls,
+      isWildcard
+    };
+  }
+
+  sampleProfileControls(locks, currentValues, prng) {
+    const controls = {};
+
+    // Sliders
+    for (const key of SLIDER_KEYS) {
+      if (locks[key] && currentValues[key] !== undefined) {
+        controls[key] = currentValues[key];
+      } else {
+        const stats = this.sliderStats[key];
+        let val;
+        if (key === 'strokeWeight') {
+          // Stroke weight is 0.6 to 6.0, default 1.4
+          val = prng.gaussian(stats.mean, stats.stdDev);
+          val = Math.max(0.6, Math.min(6.0, val));
+        } else {
+          // Standard 0 to 1 sliders
+          val = prng.gaussian(stats.mean, stats.stdDev);
+          val = Math.max(0, Math.min(1, val));
+        }
+        controls[key] = parseFloat(val.toFixed(2));
+      }
+    }
+
+    // Checkboxes
+    for (const key of CHECKBOX_KEYS) {
+      if (locks[key] && currentValues[key] !== undefined) {
+        controls[key] = currentValues[key];
+      } else {
+        const p = this.checkboxProbs[key] || 0.5;
+        controls[key] = prng.boolean(p);
+      }
+    }
+
+    return controls;
+  }
+
+  sampleWildcardControls(locks, currentValues, prng) {
+    const controls = {};
+
+    for (const key of SLIDER_KEYS) {
+      if (locks[key] && currentValues[key] !== undefined) {
+        controls[key] = currentValues[key];
+      } else if (key === 'strokeWeight') {
+        controls[key] = parseFloat(prng.range(0.8, 3.5).toFixed(2));
+      } else {
+        controls[key] = parseFloat(prng.range(0.1, 0.9).toFixed(2));
+      }
+    }
+
+    for (const key of CHECKBOX_KEYS) {
+      if (locks[key] && currentValues[key] !== undefined) {
+        controls[key] = currentValues[key];
+      } else {
+        controls[key] = prng.boolean(0.5);
+      }
+    }
+
+    return controls;
+  }
+
+  isTooCloseToRecent(family, candidateControls) {
+    // Look at last 5 designs shown in this same family
+    const recentSameFamily = this.recentHistory
+      .filter(h => h.family === family)
+      .slice(-5);
+
+    for (const past of recentSameFamily) {
+      let allWithin01 = true;
+      for (const key of SLIDER_KEYS) {
+        const v1 = candidateControls[key];
+        const v2 = past.controls[key];
+        if (Math.abs(v1 - v2) > 0.10) {
+          allWithin01 = false;
+          break;
+        }
+      }
+      if (allWithin01) return true; // Within 0.1 on every control
+    }
+
+    return false;
+  }
+
+  exportJSON() {
+    return JSON.stringify({
+      version: '1.0',
+      exportedAt: new Date().toISOString(),
+      savedCount: this.savedDesigns.length,
+      familyWeights: this.familyWeights,
+      sliderStats: this.sliderStats,
+      savedDesigns: this.savedDesigns
+    }, null, 2);
+  }
+
+  importJSON(jsonString) {
+    try {
+      const data = JSON.parse(jsonString);
+      if (Array.isArray(data.savedDesigns)) {
+        this.savedDesigns = data.savedDesigns;
+      }
+      if (data.familyNudges) {
+        this.familyNudges = data.familyNudges;
+      }
+      this.computeStatistics();
+      this.persistLocal();
+      return true;
+    } catch (e) {
+      console.error('Failed to 
+      return false;
+    }
+  }
+
+  persistLocal() {
+    try {
+      localStorage.setItem(this.storageKey, JSON.stringify({
+        savedDesigns: this.savedDesigns,
+        familyNudges: this.familyNudges
+      }));
+    } catch (e) {
+      // localStorage may fail in sandboxed or file:// contexts
+    }
+  }
+
+  loadLocal() {
+    try {
+      const raw = localStorage.getItem(this.storageKey);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed.savedDesigns)) {
+          this.savedDesigns = parsed.savedDesigns;
+        }
+        if (parsed.familyNudges) {
+          this.familyNudges = parsed.familyNudges;
+        }
+        this.computeStatistics();
+      }
+    } catch (e) {
+      // Ignore
+    }
+  }
+}
+
+/**
+ * Main Application Controller
+ */
+
+
+
+
+
+
+
+class App {
+  constructor() {
+    this.tasteProfile = new TasteProfileManager();
+    this.tasteProfile.loadLocal();
+
+    this.history = [];
+    this.historyIndex = -1;
+
+    // Control lock states
+    this.locks = {
+      complexity: false,
+      symmetry: false,
+      focus: false,
+      depthTilt: false,
+      annotations: false,
+      roughness: false,
+      lineBreaks: false,
+      strokeWeight: false,
+      weightVariation: false,
+      overshoot: false
+    };
+
+    this.previewTheme = 'dark'; // 'dark' | 'light'
+    this.currentDesign = null;
+    this.currentScene = null;
+    this.lastRenderedSVG = '';
+
+    this.initDOM();
+    this.bindEvents();
+
+    // Start with first design
+    this.next();
+  }
+
+  initDOM() {
+    this.dom = {
+      canvasContainer: document.getElementById('canvas-container'),
+      themeToggleBtn: document.getElementById('theme-toggle-btn'),
+      nextBtn: document.getElementById('next-btn'),
+      backBtn: document.getElementById('back-btn'),
+      saveBtn: document.getElementById('save-btn'),
+      copySvgBtn: document.getElementById('copy-svg-btn'),
+      downloadSvgBtn: document.getElementById('download-svg-btn'),
+
+      // Status bar
+      familyBadge: document.getElementById('family-badge'),
+      seedBadge: document.getElementById('seed-badge'),
+      wildcardBadge: document.getElementById('wildcard-badge'),
+      anchorCountBadge: document.getElementById('anchor-count-badge'),
+      renderTimeBadge: document.getElementById('render-time-badge'),
+
+      // Composition controls
+      complexitySlider: document.getElementById('complexity-slider'),
+      complexityVal: document.getElementById('complexity-val'),
+      symmetrySlider: document.getElementById('symmetry-slider'),
+      symmetryVal: document.getElementById('symmetry-val'),
+      focusSlider: document.getElementById('focus-slider'),
+      focusVal: document.getElementById('focus-val'),
+      depthTiltCheck: document.getElementById('depth-tilt-check'),
+      annotationsCheck: document.getElementById('annotations-check'),
+
+      // Finish controls
+      roughnessSlider: document.getElementById('roughness-slider'),
+      roughnessVal: document.getElementById('roughness-val'),
+      lineBreaksSlider: document.getElementById('line-breaks-slider'),
+      lineBreaksVal: document.getElementById('line-breaks-val'),
+      strokeWeightSlider: document.getElementById('stroke-weight-slider'),
+      strokeWeightVal: document.getElementById('stroke-weight-val'),
+      weightVariationSlider: document.getElementById('weight-variation-slider'),
+      weightVariationVal: document.getElementById('weight-variation-val'),
+      overshootSlider: document.getElementById('overshoot-slider'),
+      overshootVal: document.getElementById('overshoot-val'),
+
+      // Locks
+      lockButtons: document.querySelectorAll('.lock-btn'),
+
+      // Profile drawer
+      toggleProfileBtn: document.getElementById('toggle-profile-btn'),
+      profileDrawer: document.getElementById('profile-drawer'),
+      familyWeightsList: document.getElementById('family-weights-list'),
+      sliderStatsList: document.getElementById('slider-stats-list'),
+      resetProfileBtn: document.getElementById('reset-profile-btn'),
+      exportJsonBtn: document.getElementById('export-json-btn'),
+      importJsonBtn: document.getElementById('import-json-btn'),
+      importFileInput: document.getElementById('import-file-input'),
+
+      // Favorites Tray
+      favoritesCount: document.getElementById('favorites-count'),
+      favoritesList: document.getElementById('favorites-list'),
+      toast: document.getElementById('toast')
+    };
+  }
+
+  bindEvents() {
+    // Navigation
+    this.dom.nextBtn.addEventListener('click', () => this.next());
+    this.dom.backBtn.addEventListener('click', () => this.back());
+    this.dom.saveBtn.addEventListener('click', () => this.save());
+    this.dom.copySvgBtn.addEventListener('click', () => this.copySVG());
+    this.dom.downloadSvgBtn.addEventListener('click', () => this.downloadSVG());
+    this.dom.themeToggleBtn.addEventListener('click', () => this.toggleTheme());
+
+    // Lock toggles
+    this.dom.lockButtons.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const control = e.currentTarget.dataset.control;
+        this.toggleLock(control, e.currentTarget);
+      });
+    });
+
+    // Composition slider listeners (rebuilds Scene)
+    const compSliders = [
+      { el: this.dom.complexitySlider, valEl: this.dom.complexityVal, key: 'complexity' },
+      { el: this.dom.symmetrySlider, valEl: this.dom.symmetryVal, key: 'symmetry' },
+      { el: this.dom.focusSlider, valEl: this.dom.focusVal, key: 'focus' }
+    ];
+
+    compSliders.forEach(({ el, valEl, key }) => {
+      el.addEventListener('input', () => {
+        const v = parseFloat(el.value);
+        valEl.textContent = v.toFixed(2);
+        this.currentDesign.controls[key] = v;
+        this.rebuildScene();
+      });
+    });
+
+    // Checkboxes (rebuilds Scene)
+    this.dom.depthTiltCheck.addEventListener('change', () => {
+      this.currentDesign.controls.depthTilt = this.dom.depthTiltCheck.checked;
+      this.rebuildScene();
+    });
+
+    this.dom.annotationsCheck.addEventListener('change', () => {
+      this.currentDesign.controls.annotations = this.dom.annotationsCheck.checked;
+      this.rebuildScene();
+    });
+
+    // Finish slider listeners (instant restyle, does NOT rebuild scene)
+    const finishSliders = [
+      { el: this.dom.roughnessSlider, valEl: this.dom.roughnessVal, key: 'roughness', fmt: v => v.toFixed(2) },
+      { el: this.dom.lineBreaksSlider, valEl: this.dom.lineBreaksVal, key: 'lineBreaks', fmt: v => v.toFixed(2) },
+      { el: this.dom.strokeWeightSlider, valEl: this.dom.strokeWeightVal, key: 'strokeWeight', fmt: v => `${v.toFixed(1)}px` },
+      { el: this.dom.weightVariationSlider, valEl: this.dom.weightVariationVal, key: 'weightVariation', fmt: v => v.toFixed(2) },
+      { el: this.dom.overshootSlider, valEl: this.dom.overshootVal, key: 'overshoot', fmt: v => v.toFixed(2) }
+    ];
+
+    finishSliders.forEach(({ el, valEl, key, fmt }) => {
+      el.addEventListener('input', () => {
+        const v = parseFloat(el.value);
+        valEl.textContent = fmt(v);
+        this.currentDesign.controls[key] = v;
+        this.renderFinishPipeline();
+      });
+    });
+
+    // Profile drawer toggle
+    this.dom.toggleProfileBtn.addEventListener('click', () => {
+      this.dom.profileDrawer.classList.toggle('open');
+      this.updateProfileUI();
+    });
+
+    this.dom.resetProfileBtn.addEventListener('click', () => {
+      if (confirm('Reset taste profile to the 25 references baseline?')) {
+        this.tasteProfile.resetProfile();
+        this.updateProfileUI();
+        this.updateFavoritesUI();
+        this.showToast('Taste profile reset to baseline');
+      }
+    });
+
+    this.dom.exportJsonBtn.addEventListener('click', () => {
+      const json = this.tasteProfile.exportJSON();
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `atom-taste-profile-${Date.now()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      this.showToast('Profile & favorites exported');
+    });
+
+    this.dom.importJsonBtn.addEventListener('click', () => {
+      this.dom.importFileInput.click();
+    });
+
+    this.dom.importFileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const ok = this.tasteProfile.importJSON(event.target.result);
+        if (ok) {
+          this.updateProfileUI();
+          this.updateFavoritesUI();
+          this.showToast('Profile & favorites successfully imported!');
+        } else {
+          alert('Invalid JSON file.');
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    // Keyboard shortcuts (Space/Right = Next, Left = Back, S = Save, C = Copy)
+    window.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
+      if (e.key === ' ' || e.key === 'ArrowRight') {
+        e.preventDefault();
+        this.next();
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        this.back();
+      } else if (e.key === 's' || e.key === 'S') {
+        e.preventDefault();
+        this.save();
+      } else if (e.key === 'c' || e.key === 'C') {
+        e.preventDefault();
+        this.copySVG();
+      }
+    });
+  }
+
+  toggleLock(controlName, btnElement) {
+    this.locks[controlName] = !this.locks[controlName];
+    const isLocked = this.locks[controlName];
+    btnElement.classList.toggle('locked', isLocked);
+    btnElement.setAttribute('aria-pressed', isLocked);
+    btnElement.title = isLocked ? `Locked (${controlName} preserved on Next)` : `Unlocked`;
+    this.showToast(`${controlName} ${isLocked ? 'locked' : 'unlocked'}`);
+  }
+
+  next() {
+    const nextResult = this.tasteProfile.generateNext(
+      this.locks,
+      this.currentDesign ? this.currentDesign.controls : {}
+    );
+
+    const newDesign = {
+      family: nextResult.family,
+      seed: nextResult.seed,
+      controls: nextResult.controls,
+      isWildcard: nextResult.isWildcard
+    };
+
+    // Trim history forward branch if we went back earlier
+    if (this.historyIndex < this.history.length - 1) {
+      this.history = this.history.slice(0, this.historyIndex + 1);
+    }
+
+    this.history.push(newDesign);
+    this.historyIndex = this.history.length - 1;
+
+    this.loadDesign(newDesign);
+  }
+
+  back() {
+    if (this.historyIndex > 0) {
+      this.historyIndex--;
+      const prevDesign = this.history[this.historyIndex];
+      this.loadDesign(prevDesign);
+    }
+  }
+
+  loadDesign(design) {
+    this.currentDesign = JSON.parse(JSON.stringify(design));
+    this.syncControlsToUI();
+    this.rebuildScene();
+    this.updateNavButtons();
+  }
+
+  syncControlsToUI() {
+    const c = this.currentDesign.controls;
+    this.dom.complexitySlider.value = c.complexity;
+    this.dom.complexityVal.textContent = c.complexity.toFixed(2);
+    this.dom.symmetrySlider.value = c.symmetry;
+    this.dom.symmetryVal.textContent = c.symmetry.toFixed(2);
+    this.dom.focusSlider.value = c.focus;
+    this.dom.focusVal.textContent = c.focus.toFixed(2);
+
+    this.dom.depthTiltCheck.checked = !!c.depthTilt;
+    this.dom.annotationsCheck.checked = !!c.annotations;
+
+    this.dom.roughnessSlider.value = c.roughness;
+    this.dom.roughnessVal.textContent = c.roughness.toFixed(2);
+    this.dom.lineBreaksSlider.value = c.lineBreaks;
+    this.dom.lineBreaksVal.textContent = c.lineBreaks.toFixed(2);
+    this.dom.strokeWeightSlider.value = c.strokeWeight;
+    this.dom.strokeWeightVal.textContent = `${c.strokeWeight.toFixed(1)}px`;
+    this.dom.weightVariationSlider.value = c.weightVariation;
+    this.dom.weightVariationVal.textContent = c.weightVariation.toFixed(2);
+    this.dom.overshootSlider.value = c.overshoot;
+    this.dom.overshootVal.textContent = c.overshoot.toFixed(2);
+
+    // Badges
+    const famObj = GENERATOR_FAMILIES[this.currentDesign.family];
+    this.dom.familyBadge.textContent = famObj ? famObj.name : this.currentDesign.family;
+    this.dom.seedBadge.textContent = `#${this.currentDesign.seed}`;
+
+    if (this.currentDesign.isWildcard) {
+      this.dom.wildcardBadge.classList.remove('hidden');
+    } else {
+      this.dom.wildcardBadge.classList.add('hidden');
+    }
+  }
+
+  rebuildScene() {
+    const t0 = performance.now();
+    const prng = createPRNG(this.currentDesign.seed);
+    this.currentScene = generateScene(
+      this.currentDesign.family,
+      prng,
+      this.currentDesign.controls
+    );
+
+    this.renderFinishPipeline(t0);
+  }
+
+  renderFinishPipeline(startTime = performance.now()) {
+    if (!this.currentScene) return;
+
+    // Run finish pipeline
+    const rendered = runFinishPipeline(
+      this.currentScene,
+      this.currentDesign.controls
+    );
+
+    // Color based on preview theme
+    // Note: Export SVG always uses pure black (#000000)
+    const previewStroke = this.previewTheme === 'dark' ? '#E6EDF3' : '#111827';
+    const previewFill = this.previewTheme === 'dark' ? '#E6EDF3' : '#111827';
+
+    // Generate preview SVG
+    const previewSvg = writeSVG(rendered, {
+      strokeColor: previewStroke,
+      fillColor: previewFill
+    });
+
+    // Generate clean black SVG
+    this.lastRenderedSVG = writeSVG(rendered, {
+      strokeColor: '#000000',
+      fillColor: '#000000'
+    });
+
+    this.dom.canvasContainer.innerHTML = previewSvg;
+
+    // Count anchor points (approximate from path commands)
+    const anchorMatches = this.lastRenderedSVG.match(/[MLHVCSQTAZ]/gi) || [];
+    const anchorCount = anchorMatches.length;
+    this.dom.anchorCountBadge.textContent = `${anchorCount} anchors`;
+    if (anchorCount > 3000) {
+      this.dom.anchorCountBadge.classList.add('warn');
+    } else {
+      this.dom.anchorCountBadge.classList.remove('warn');
+    }
+
+    const elapsed = Math.round(performance.now() - startTime);
+    this.dom.renderTimeBadge.textContent = `${elapsed} ms`;
+  }
+
+  save() {
+    const saved = this.tasteProfile.saveDesign(this.currentDesign);
+    this.updateFavoritesUI();
+    this.updateProfileUI();
+    this.showToast('Saved to favorites & learned by taste profile!');
+  }
+
+  copySVG() {
+    if (!this.lastRenderedSVG) return;
+    navigator.clipboard.writeText(this.lastRenderedSVG).then(() => {
+      this.showToast('Copied SVG to clipboard for Figma!');
+    }).catch(err => {
+      // Fallback
+      const ta = document.createElement('textarea');
+      ta.value = this.lastRenderedSVG;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      this.showToast('Copied SVG to clipboard!');
+    });
+  }
+
+  downloadSVG() {
+    if (!this.lastRenderedSVG) return;
+    const blob = new Blob([this.lastRenderedSVG], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `atom-${this.currentDesign.family}-seed${this.currentDesign.seed}.svg`;
+    a.click();
+    URL.revokeObjectURL(url);
+    this.showToast('Downloaded SVG');
+  }
+
+  toggleTheme() {
+    this.previewTheme = this.previewTheme === 'dark' ? 'light' : 'dark';
+    document.body.classList.toggle('light-theme', this.previewTheme === 'light');
+    this.dom.themeToggleBtn.textContent = this.previewTheme === 'dark' ? '☀️ Light' : '🌙 Dark';
+    this.renderFinishPipeline();
+  }
+
+  updateNavButtons() {
+    this.dom.backBtn.disabled = (this.historyIndex <= 0);
+  }
+
+  updateFavoritesUI() {
+    const favs = this.tasteProfile.savedDesigns;
+    this.dom.favoritesCount.textContent = favs.length;
+
+    if (favs.length === 0) {
+      this.dom.favoritesList.innerHTML = '<div class="empty-favs">No saved patterns yet. Press "Save" on a pattern you like!</div>';
+      return;
+    }
+
+    this.dom.favoritesList.innerHTML = '';
+    favs.slice().reverse().forEach(fav => {
+      const card = document.createElement('div');
+      card.className = 'fav-card';
+      const famName = GENERATOR_FAMILIES[fav.family]?.name || fav.family;
+
+      card.innerHTML = `
+        <div class="fav-info">
+          <div class="fav-title">${famName}</div>
+          <div class="fav-sub">#${fav.seed} · ${new Date(fav.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+        </div>
+        <div class="fav-actions">
+          <button class="btn-fav-load" title="Load into canvas">Load</button>
+          <button class="btn-fav-del" title="Remove">&times;</button>
+        </div>
+      `;
+
+      card.querySelector('.btn-fav-load').addEventListener('click', () => {
+        this.loadDesign({
+          family: fav.family,
+          seed: fav.seed,
+          controls: {
+            complexity: fav.complexity,
+            symmetry: fav.symmetry,
+            focus: fav.focus,
+            depthTilt: fav.depthTilt,
+            annotations: fav.annotations,
+            roughness: fav.roughness,
+            lineBreaks: fav.lineBreaks,
+            strokeWeight: fav.strokeWeight,
+            weightVariation: fav.weightVariation,
+            overshoot: fav.overshoot
+          },
+          isWildcard: false
+        });
+        this.showToast(`Loaded favorite #${fav.seed}`);
+      });
+
+      card.querySelector('.btn-fav-del').addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.tasteProfile.removeSavedDesign(fav.id);
+        this.updateFavoritesUI();
+        this.updateProfileUI();
+      });
+
+      this.dom.favoritesList.appendChild(card);
+    });
+  }
+
+  updateProfileUI() {
+    const weights = this.tasteProfile.familyWeights;
+    const counts = this.tasteProfile.familyCounts;
+
+    // Render family weights list with nudge buttons
+    this.dom.familyWeightsList.innerHTML = '';
+    for (const [fId, w] of Object.entries(weights)) {
+      const row = document.createElement('div');
+      row.className = 'profile-family-row';
+      const fName = GENERATOR_FAMILIES[fId]?.name || fId;
+      const count = counts[fId] || 0;
+      const pct = Math.round(w * 100);
+
+      row.innerHTML = `
+        <div class="p-fam-label">
+          <span class="p-fam-name">${fName}</span>
+          <span class="p-fam-stat">${count} items (${pct}%)</span>
+        </div>
+        <div class="p-fam-bar-wrap">
+          <div class="p-fam-bar" style="width: ${Math.min(100, pct * 2)}%"></div>
+        </div>
+        <div class="p-fam-nudges">
+          <button class="nudge-btn nudge-down" title="Lower weight">-</button>
+          <button class="nudge-btn nudge-up" title="Raise weight">+</button>
+        </div>
+      `;
+
+      row.querySelector('.nudge-down').addEventListener('click', () => {
+        this.tasteProfile.nudgeFamily(fId, -0.05);
+        this.updateProfileUI();
+      });
+
+      row.querySelector('.nudge-up').addEventListener('click', () => {
+        this.tasteProfile.nudgeFamily(fId, 0.05);
+        this.updateProfileUI();
+      });
+
+      this.dom.familyWeightsList.appendChild(row);
+    }
+
+    // Render slider stats
+    this.dom.sliderStatsList.innerHTML = '';
+    for (const [key, stat] of Object.entries(this.tasteProfile.sliderStats)) {
+      const row = document.createElement('div');
+      row.className = 'profile-slider-row';
+      const m = stat.mean.toFixed(2);
+      const s = stat.stdDev.toFixed(2);
+
+      row.innerHTML = `
+        <span class="p-slider-name">${key}</span>
+        <span class="p-slider-val">μ=${m} ± σ=${s}</span>
+      `;
+      this.dom.sliderStatsList.appendChild(row);
+    }
+  }
+
+  showToast(message) {
+    if (!this.dom.toast) return;
+    this.dom.toast.textContent = message;
+    this.dom.toast.classList.add('show');
+    clearTimeout(this.toastTimer);
+    this.toastTimer = setTimeout(() => {
+      this.dom.toast.classList.remove('show');
+    }, 2500);
+  }
+}
+
+// Bootstrap application on DOM load
+window.addEventListener('DOMContentLoaded', () => {
+  window.app = new App();
+});
+
+// Figma plugin communication
+const insertFigmaBtn = document.createElement('button');
+insertFigmaBtn.className = 'btn btn-primary';
+insertFigmaBtn.style.background = '#10B981';
+insertFigmaBtn.textContent = '⚡ Insert to Canvas';
+insertFigmaBtn.title = 'Insert into selected Figma frame';
+insertFigmaBtn.addEventListener('click', () => {
+  if (window.app && window.app.lastRenderedSVG) {
+    parent.postMessage({
+      pluginMessage: {
+        type: 'insert-pattern',
+        svg: window.app.lastRenderedSVG,
+        family: window.app.currentDesign.family,
+        seed: window.app.currentDesign.seed
+      }
+    }, '*');
+  }
+});
+
+const headerActions = document.querySelector('.header-actions');
+if (headerActions) {
+  headerActions.prepend(insertFigmaBtn);
+}
+
+// Handle figma messages
+window.onmessage = (event) => {
+  const msg = event.data.pluginMessage;
+  if (!msg) return;
+  if (msg.type === 'init-favorites' && Array.isArray(msg.data)) {
+    if (window.app) {
+      window.app.tasteProfile.savedDesigns = msg.data;
+      window.app.tasteProfile.computeStatistics();
+      window.app.updateFavoritesUI();
+      window.app.updateProfileUI();
+    }
+  }
+};
+
+</script>
+</body>
+</html>

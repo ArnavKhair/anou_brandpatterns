@@ -1,0 +1,33 @@
+[
+  { "id": "ref-01", "family": "rosettes", "complexity": 0.45, "symmetry": 0.90, "focus": 0.85, "depthTilt": false, "annotations": false, "roughness": 0.15, "lineBreaks": 0.05, "strokeWeight": 1.4, "weightVariation": 0.10, "overshoot": 0.05 },
+  { "id": "ref-02", "family": "rosettes", "complexity": 0.60, "symmetry": 0.95, "focus": 0.90, "depthTilt": false, "annotations": true,  "roughness": 0.20, "lineBreaks": 0.00, "strokeWeight": 1.2, "weightVariation": 0.05, "overshoot": 0.00 },
+  { "id": "ref-03", "family": "rosettes", "complexity": 0.35, "symmetry": 0.80, "focus": 0.75, "depthTilt": true,  "annotations": false, "roughness": 0.30, "lineBreaks": 0.10, "strokeWeight": 1.6, "weightVariation": 0.20, "overshoot": 0.10 },
+  { "id": "ref-04", "family": "rosettes", "complexity": 0.70, "symmetry": 0.85, "focus": 0.80, "depthTilt": false, "annotations": true,  "roughness": 0.25, "lineBreaks": 0.15, "strokeWeight": 1.4, "weightVariation": 0.15, "overshoot": 0.05 },
+  { "id": "ref-05", "family": "rosettes", "complexity": 0.50, "symmetry": 0.75, "focus": 0.70, "depthTilt": false, "annotations": false, "roughness": 0.10, "lineBreaks": 0.00, "strokeWeight": 1.0, "weightVariation": 0.00, "overshoot": 0.00 },
+  { "id": "ref-06", "family": "rosettes", "complexity": 0.55, "symmetry": 0.90, "focus": 0.85, "depthTilt": true,  "annotations": false, "roughness": 0.18, "lineBreaks": 0.08, "strokeWeight": 1.5, "weightVariation": 0.12, "overshoot": 0.08 },
+
+  { "id": "ref-07", "family": "wireframes", "complexity": 0.50, "symmetry": 0.85, "focus": 0.90, "depthTilt": true, "annotations": true,  "roughness": 0.22, "lineBreaks": 0.05, "strokeWeight": 1.4, "weightVariation": 0.15, "overshoot": 0.10 },
+  { "id": "ref-08", "family": "wireframes", "complexity": 0.65, "symmetry": 0.90, "focus": 0.80, "depthTilt": true, "annotations": true,  "roughness": 0.28, "lineBreaks": 0.10, "strokeWeight": 1.6, "weightVariation": 0.20, "overshoot": 0.15 },
+  { "id": "ref-09", "family": "wireframes", "complexity": 0.40, "symmetry": 0.80, "focus": 0.85, "depthTilt": true, "annotations": false, "roughness": 0.15, "lineBreaks": 0.00, "strokeWeight": 1.2, "weightVariation": 0.05, "overshoot": 0.00 },
+  { "id": "ref-10", "family": "wireframes", "complexity": 0.75, "symmetry": 0.75, "focus": 0.75, "depthTilt": true, "annotations": true,  "roughness": 0.35, "lineBreaks": 0.12, "strokeWeight": 1.8, "weightVariation": 0.25, "overshoot": 0.20 },
+
+  { "id": "ref-11", "family": "tangent_chains", "complexity": 0.45, "symmetry": 0.60, "focus": 0.65, "depthTilt": false, "annotations": false, "roughness": 0.20, "lineBreaks": 0.08, "strokeWeight": 1.4, "weightVariation": 0.15, "overshoot": 0.12 },
+  { "id": "ref-12", "family": "tangent_chains", "complexity": 0.60, "symmetry": 0.70, "focus": 0.70, "depthTilt": true,  "annotations": true,  "roughness": 0.25, "lineBreaks": 0.12, "strokeWeight": 1.5, "weightVariation": 0.20, "overshoot": 0.18 },
+  { "id": "ref-13", "family": "tangent_chains", "complexity": 0.35, "symmetry": 0.50, "focus": 0.55, "depthTilt": false, "annotations": false, "roughness": 0.15, "lineBreaks": 0.00, "strokeWeight": 1.2, "weightVariation": 0.10, "overshoot": 0.05 },
+  { "id": "ref-14", "family": "tangent_chains", "complexity": 0.70, "symmetry": 0.65, "focus": 0.60, "depthTilt": false, "annotations": true,  "roughness": 0.30, "lineBreaks": 0.15, "strokeWeight": 1.6, "weightVariation": 0.25, "overshoot": 0.22 },
+
+  { "id": "ref-15", "family": "lobes", "complexity": 0.50, "symmetry": 0.85, "focus": 0.80, "depthTilt": false, "annotations": false, "roughness": 0.18, "lineBreaks": 0.05, "strokeWeight": 1.4, "weightVariation": 0.15, "overshoot": 0.05 },
+  { "id": "ref-16", "family": "lobes", "complexity": 0.65, "symmetry": 0.90, "focus": 0.85, "depthTilt": true,  "annotations": true,  "roughness": 0.22, "lineBreaks": 0.08, "strokeWeight": 1.6, "weightVariation": 0.20, "overshoot": 0.10 },
+  { "id": "ref-17", "family": "lobes", "complexity": 0.40, "symmetry": 0.75, "focus": 0.70, "depthTilt": false, "annotations": false, "roughness": 0.12, "lineBreaks": 0.00, "strokeWeight": 1.2, "weightVariation": 0.05, "overshoot": 0.00 },
+
+  { "id": "ref-18", "family": "field_lines", "complexity": 0.55, "symmetry": 0.80, "focus": 0.75, "depthTilt": false, "annotations": true,  "roughness": 0.25, "lineBreaks": 0.10, "strokeWeight": 1.4, "weightVariation": 0.18, "overshoot": 0.12 },
+  { "id": "ref-19", "family": "field_lines", "complexity": 0.70, "symmetry": 0.85, "focus": 0.80, "depthTilt": true,  "annotations": true,  "roughness": 0.30, "lineBreaks": 0.15, "strokeWeight": 1.6, "weightVariation": 0.22, "overshoot": 0.18 },
+  { "id": "ref-20", "family": "field_lines", "complexity": 0.40, "symmetry": 0.70, "focus": 0.65, "depthTilt": false, "annotations": false, "roughness": 0.15, "lineBreaks": 0.00, "strokeWeight": 1.2, "weightVariation": 0.10, "overshoot": 0.05 },
+
+  { "id": "ref-21", "family": "orbit_systems", "complexity": 0.50, "symmetry": 0.40, "focus": 0.70, "depthTilt": true,  "annotations": true,  "roughness": 0.22, "lineBreaks": 0.08, "strokeWeight": 1.4, "weightVariation": 0.15, "overshoot": 0.10 },
+  { "id": "ref-22", "family": "orbit_systems", "complexity": 0.65, "symmetry": 0.35, "focus": 0.60, "depthTilt": false, "annotations": false, "roughness": 0.18, "lineBreaks": 0.05, "strokeWeight": 1.3, "weightVariation": 0.12, "overshoot": 0.08 },
+  { "id": "ref-23", "family": "orbit_systems", "complexity": 0.35, "symmetry": 0.50, "focus": 0.75, "depthTilt": true,  "annotations": true,  "roughness": 0.28, "lineBreaks": 0.12, "strokeWeight": 1.6, "weightVariation": 0.20, "overshoot": 0.15 },
+
+  { "id": "ref-24", "family": "particle_bursts", "complexity": 0.60, "symmetry": 0.45, "focus": 0.85, "depthTilt": false, "annotations": true,  "roughness": 0.28, "lineBreaks": 0.12, "strokeWeight": 1.5, "weightVariation": 0.18, "overshoot": 0.15 },
+  { "id": "ref-25", "family": "particle_bursts", "complexity": 0.45, "symmetry": 0.30, "focus": 0.70, "depthTilt": true,  "annotations": false, "roughness": 0.20, "lineBreaks": 0.05, "strokeWeight": 1.3, "weightVariation": 0.10, "overshoot": 0.08 }
+]

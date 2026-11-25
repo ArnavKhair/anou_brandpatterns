@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Atom Pattern Generator</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="dark-theme">
+  <div class="app-layout">
+    <!-- Top Bar -->
+    <header class="app-header">
+      <div class="brand">
+        <span class="brand-glyph">⚛</span>
+        <h1>Atom Pattern Generator</h1>
+        <span class="badge prototype-badge">Prototype</span>
+      </div>
+
+      <div class="header-actions">
+        <button id="theme-toggle-btn" class="btn btn-secondary">☀️ Light</button>
+        <button id="toggle-profile-btn" class="btn btn-secondary">📊 Taste Profile</button>
+        <div class="divider-v"></div>
+        <button id="copy-svg-btn" class="btn btn-secondary" title="Copy raw SVG markup for Figma (C)">📋 Copy SVG</button>
+        <button id="download-svg-btn" class="btn btn-secondary" title="Download .svg file">💾 Download SVG</button>
+        <button id="save-btn" class="btn btn-primary" title="Save pattern and update taste profile (S)">★ Save Design</button>
+      </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <div class="workspace">
+      <!-- Left / Canvas Area -->
+      <main class="canvas-panel">
+        <!-- Pattern Info Subheader -->
+        <div class="canvas-meta-bar">
+          <div class="meta-left">
+            <span id="family-badge" class="badge family-badge">Rosettes</span>
+            <span id="seed-badge" class="badge seed-badge">#123456</span>
+            <span id="wildcard-badge" class="badge wildcard-badge hidden">✨ Wildcard</span>
+          </div>
+
+          <div class="meta-right">
+            <span id="anchor-count-badge" class="meta-metric">0 anchors</span>
+            <span class="metric-divider">·</span>
+            <span id="render-time-badge" class="meta-metric">0 ms</span>
+          </div>
+        </div>
+
+        <!-- Canvas Viewport -->
+        <div class="canvas-viewport">
+          <div id="canvas-container" class="canvas-container"></div>
+        </div>
+
+        <!-- Primary Flow Navigation Controls -->
+        <nav class="canvas-nav-bar">
+          <button id="back-btn" class="btn btn-nav btn-back" title="Back to previous pattern (Left Arrow)" disabled>
+            ← Back
+          </button>
+          <div class="nav-hint">Press <strong>Space</strong> or click Next to explore</div>
+          <button id="next-btn" class="btn btn-nav btn-next" title="Next pattern from profile (Space / Right Arrow)">
+            Next Pattern →
+          </button>
+        </nav>
+
+        <!-- Favorites Tray -->
+        <section class="favorites-section">
+          <div class="favorites-header">
+            <h3>Saved Favorites (<span id="favorites-count">0</span>)</h3>
+            <div class="fav-tools">
+              <button id="export-json-btn" class="btn-text">Export JSON</button>
+              <button id="import-json-btn" class="btn-text">Import JSON</button>
+              <input type="file" id="import-file-input" accept=".json" style="display: none;">
+            </div>
+          </div>
+          <div id="favorites-list" class="favorites-list">
+            <div class="empty-favs">No saved patterns yet. Press "Save Design" on one you like!</div>
+          </div>
+        </section>
+      </main>
+
+      <!-- Right Controls Sidebar -->
+      <aside class="controls-sidebar">
+        <!-- Section: Composition Controls (Rebuilds Scene) -->
+        <div class="control-group">
+          <div class="group-header">
+            <h2>Composition</h2>
+            <span class="group-sub">Rebuilds structure</span>
+          </div>
+
+          <!-- Complexity -->
+          <div class="control-row">
+            <div class="control-label-wrap">
+              <label for="complexity-slider">Complexity</label>
+              <div class="control-val-lock">
+                <span id="complexity-val" class="slider-val">0.50</span>
+                <button class="lock-btn" data-control="complexity" title="Lock slider value">🔒</button>
+              </div>
+            </div>
+            <input type="range" id="complexity-slider" min="0" max="1" step="0.01" value="0.50">
+            <div class="slider-scale"><span>Simple</span><span>Complex</span></div>
+          </div>
+
+          <!-- Symmetry -->
+          <div class="control-row">
+            <div class="control-label-wrap">
+              <label for="symmetry-slider">Symmetry</label>
+              <div class="control-val-lock">
+                <span id="symmetry-val" class="slider-val">0.50</span>
+                <button class="lock-btn" data-control="symmetry" title="Lock slider value">🔒</button>
+              </div>
+            </div>
+            <input type="range" id="symmetry-slider" min="0" max="1" step="0.01" value="0.50">
+            <div class="slider-scale"><span>Asymmetry</span><span>Symmetry</span></div>
+          </div>
+
+          <!-- Focus -->
+          <div class="control-row">
+            <div class="control-label-wrap">
+              <label for="focus-slider">Focus</label>
+              <div class="control-val-lock">
+                <span id="focus-val" class="slider-val">0.50</span>
+                <button class="lock-btn" data-control="focus" title="Lock slider value">🔒</button>
+              </div>
+            </div>
+            <input type="range" id="focus-slider" min="0" max="1" step="0.01" value="0.50">
+            <div class="slider-scale"><span>Scattered</span><span>Focused</span></div>
+          </div>
+
+          <!-- Checkboxes -->
+          <div class="checkbox-row">
+            <label class="checkbox-label">
+              <input type="checkbox" id="depth-tilt-check">
+              <span>Depth / 3D Tilt</span>
+            </label>
+            <button class="lock-btn" data-control="depthTilt" title="Lock depth setting">🔒</button>
+          </div>
+
+          <div class="checkbox-row">
+            <label class="checkbox-label">
+              <input type="checkbox" id="annotations-check">
+              <span>Annotation Artifacts</span>
+            </label>
+            <button class="lock-btn" data-control="annotations" title="Lock annotations setting">🔒</button>
+          </div>
+        </div>
+
+        <!-- Section: Finish Controls (Instant Restyling) -->
+        <div class="control-group">
+          <div class="group-header">
+            <h2>Finish & Draftsmanship</h2>
+            <span class="group-sub">Instant restyling</span>
+          </div>
+
+          <!-- Rough to Clean -->
+          <div class="control-row">
+            <div class="control-label-wrap">
+              <label for="roughness-slider">Rough to Clean</label>
+              <div class="control-val-lock">
+                <span id="roughness-val" class="slider-val">0.20</span>
+                <button class="lock-btn" data-control="roughness" title="Lock slider value">🔒</button>
+              </div>
+            </div>
+            <input type="range" id="roughness-slider" min="0" max="1" step="0.01" value="0.20">
+            <div class="slider-scale"><span>Clean Arcs</span><span>Rough Pencil</span></div>
+          </div>
+
+          <!-- Line breaks -->
+          <div class="control-row">
+            <div class="control-label-wrap">
+              <label for="line-breaks-slider">Line Breaks</label>
+              <div class="control-val-lock">
+                <span id="line-breaks-val" class="slider-val">0.05</span>
+                <button class="lock-btn" data-control="lineBreaks" title="Lock slider value">🔒</button>
+              </div>
+            </div>
+            <input type="range" id="line-breaks-slider" min="0" max="1" step="0.01" value="0.05">
+            <div class="slider-scale"><span>Continuous</span><span>Broken Gaps</span></div>
+          </div>
+
+          <!-- Stroke Weight -->
+          <div class="control-row">
+            <div class="control-label-wrap">
+              <label for="stroke-weight-slider">Stroke Weight</label>
+              <div class="control-val-lock">
+                <span id="stroke-weight-val" class="slider-val">1.4px</span>
+                <button class="lock-btn" data-control="strokeWeight" title="Lock slider value">🔒</button>
+              </div>
+            </div>
+            <input type="range" id="stroke-weight-slider" min="0.6" max="6.0" step="0.1" value="1.4">
+            <div class="slider-scale"><span>Hairline (0.6px)</span><span>Bold (6.0px)</span></div>
+          </div>
+
+          <!-- Weight Variation -->
+          <div class="control-row">
+            <div class="control-label-wrap">
+              <label for="weight-variation-slider">Weight Variation</label>
+              <div class="control-val-lock">
+                <span id="weight-variation-val" class="slider-val">0.15</span>
+                <button class="lock-btn" data-control="weightVariation" title="Lock slider value">🔒</button>
+              </div>
+            </div>
+            <input type="range" id="weight-variation-slider" min="0" max="1" step="0.01" value="0.15">
+            <div class="slider-scale"><span>Uniform</span><span>Varied Chunks</span></div>
+          </div>
+
+          <!-- Overshoot -->
+          <div class="control-row">
+            <div class="control-label-wrap">
+              <label for="overshoot-slider">Overshoot</label>
+              <div class="control-val-lock">
+                <span id="overshoot-val" class="slider-val">0.10</span>
+                <button class="lock-btn" data-control="overshoot" title="Lock slider value">🔒</button>
+              </div>
+            </div>
+            <input type="range" id="overshoot-slider" min="0" max="1" step="0.01" value="0.10">
+            <div class="slider-scale"><span>Exact Ends</span><span>Construction Lines</span></div>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <!-- Collapsible Taste Profile Drawer -->
+    <div id="profile-drawer" class="profile-drawer">
+      <div class="profile-drawer-content">
+        <div class="drawer-header">
+          <h3>Learned Taste Profile</h3>
+          <p class="drawer-desc">Learns your preferences from saved designs and reference scores. No AI involved.</p>
+        </div>
+
+        <div class="profile-sections">
+          <div class="profile-col">
+            <h4>Family Weights (Distribution)</h4>
+            <div id="family-weights-list" class="profile-list"></div>
+          </div>
+
+          <div class="profile-col">
+            <h4>Learned Control Ranges</h4>
+            <div id="slider-stats-list" class="profile-list"></div>
+          </div>
+        </div>
+
+        <div class="drawer-footer">
+          <button id="reset-profile-btn" class="btn btn-danger">Reset to Default Baseline</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="toast">Action performed</div>
+  </div>
+
+  <script type="module" src="src/app.js"></script>
+</body>
+</html>
