@@ -1,12 +1,14 @@
 /**
- * Main Application Controller
+ * Main Application Controller (Phase 1 Analytic Pipeline)
  */
 
-import { createPRNG } from './math.js';
-import { GENERATOR_FAMILIES, generateScene } from './generators/index.js';
+import { createPRNG, normalizeFramingMode } from './math.js';
+import { GENERATOR_FAMILIES, generateScene, getDefaultSubMode, normalizeSubMode } from './generators/index.js';
 import { runFinishPipeline } from './finish-pipeline.js';
 import { writeSVG } from './svg-writer.js';
 import { TasteProfileManager } from './taste-profile.js';
+
+const MAX_HISTORY = 25;
 
 export class App {
   constructor() {
@@ -16,8 +18,10 @@ export class App {
     this.history = [];
     this.historyIndex = -1;
 
-    // Control lock states
     this.locks = {
+      family: false,
+      subMode: false,
+      framingPreset: false,
       complexity: false,
       symmetry: false,
       focus: false,
@@ -30,36 +34,52 @@ export class App {
       overshoot: false
     };
 
-    this.previewTheme = 'dark'; // 'dark' | 'light'
+    this.previewTheme = 'dark'; // 'dark' | 'light' | 'transparent'
+    this.showSafeGuides = false;
+    this.nonScalingStroke = false;
     this.currentDesign = null;
     this.currentScene = null;
     this.lastRenderedSVG = '';
+    this.knockoutTimer = null;
 
     this.initDOM();
+    this.populateFamilySelect();
     this.bindEvents();
+    this.updateFavoritesUI();
 
-    // Start with first design
     this.next();
   }
 
   initDOM() {
     this.dom = {
+      canvasViewport: document.getElementById('canvas-viewport'),
       canvasContainer: document.getElementById('canvas-container'),
-      themeToggleBtn: document.getElementById('theme-toggle-btn'),
+      safeMarginOverlay: document.getElementById('safe-margin-overlay'),
+      themePills: document.getElementById('theme-pills'),
+      overlayToggleBtn: document.getElementById('overlay-toggle-btn'),
+      nonScalingCheck: document.getElementById('non-scaling-check'),
+
       nextBtn: document.getElementById('next-btn'),
       backBtn: document.getElementById('back-btn'),
+      forwardBtn: document.getElementById('forward-btn'),
+      pinBtn: document.getElementById('pin-btn'),
       saveBtn: document.getElementById('save-btn'),
       copySvgBtn: document.getElementById('copy-svg-btn'),
       downloadSvgBtn: document.getElementById('download-svg-btn'),
 
-      // Status bar
-      familyBadge: document.getElementById('family-badge'),
+      familySelect: document.getElementById('family-select'),
+      familyLockBtn: document.getElementById('family-lock-btn'),
+      subModeWrap: document.getElementById('submode-wrap'),
+      subModePills: document.getElementById('submode-pills'),
+      framingPills: document.getElementById('framing-pills'),
+
       seedBadge: document.getElementById('seed-badge'),
+      layerCountBadge: document.getElementById('layer-count-badge'),
+      moodBadge: document.getElementById('mood-badge'),
       wildcardBadge: document.getElementById('wildcard-badge'),
       anchorCountBadge: document.getElementById('anchor-count-badge'),
       renderTimeBadge: document.getElementById('render-time-badge'),
 
-      // Composition controls
       complexitySlider: document.getElementById('complexity-slider'),
       complexityVal: document.getElementById('complexity-val'),
       symmetrySlider: document.getElementById('symmetry-slider'),
@@ -69,7 +89,6 @@ export class App {
       depthTiltCheck: document.getElementById('depth-tilt-check'),
       annotationsCheck: document.getElementById('annotations-check'),
 
-      // Finish controls
       roughnessSlider: document.getElementById('roughness-slider'),
       roughnessVal: document.getElementById('roughness-val'),
       lineBreaksSlider: document.getElementById('line-breaks-slider'),
@@ -81,10 +100,8 @@ export class App {
       overshootSlider: document.getElementById('overshoot-slider'),
       overshootVal: document.getElementById('overshoot-val'),
 
-      // Locks
       lockButtons: document.querySelectorAll('.lock-btn'),
 
-      // Profile drawer
       toggleProfileBtn: document.getElementById('toggle-profile-btn'),
       profileDrawer: document.getElementById('profile-drawer'),
       familyWeightsList: document.getElementById('family-weights-list'),
@@ -94,21 +111,73 @@ export class App {
       importJsonBtn: document.getElementById('import-json-btn'),
       importFileInput: document.getElementById('import-file-input'),
 
-      // Favorites Tray
       favoritesCount: document.getElementById('favorites-count'),
       favoritesList: document.getElementById('favorites-list'),
       toast: document.getElementById('toast')
     };
   }
 
+  populateFamilySelect() {
+    this.dom.familySelect.innerHTML = '';
+    for (const [id, fam] of Object.entries(GENERATOR_FAMILIES)) {
+      const opt = document.createElement('option');
+      opt.value = id;
+      opt.textContent = fam.name;
+      this.dom.familySelect.appendChild(opt);
+    }
+  }
+
   bindEvents() {
-    // Navigation
     this.dom.nextBtn.addEventListener('click', () => this.next());
     this.dom.backBtn.addEventListener('click', () => this.back());
+    this.dom.forwardBtn.addEventListener('click', () => this.forward());
+    this.dom.pinBtn.addEventListener('click', () => this.save());
     this.dom.saveBtn.addEventListener('click', () => this.save());
     this.dom.copySvgBtn.addEventListener('click', () => this.copySVG());
     this.dom.downloadSvgBtn.addEventListener('click', () => this.downloadSVG());
-    this.dom.themeToggleBtn.addEventListener('click', () => this.toggleTheme());
+
+    // Preview Theme (Dark / Light / Transparent)
+    this.dom.themePills.querySelectorAll('.seg-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.setPreviewTheme(btn.dataset.theme);
+      });
+    });
+
+    // Safe-Margin & Crosshair Overlay
+    this.dom.overlayToggleBtn.addEventListener('click', () => {
+      this.showSafeGuides = !this.showSafeGuides;
+      this.dom.safeMarginOverlay.classList.toggle('hidden', !this.showSafeGuides);
+      this.dom.overlayToggleBtn.classList.toggle('active', this.showSafeGuides);
+    });
+
+    // Non-scaling stroke toggle
+    this.dom.nonScalingCheck.addEventListener('change', () => {
+      this.nonScalingStroke = this.dom.nonScalingCheck.checked;
+      this.renderFinishPipeline(performance.now(), { skipKnockout: false });
+    });
+
+    // Manual Family switch -> reset subMode to default & auto-lock family
+    this.dom.familySelect.addEventListener('change', () => {
+      const famId = this.dom.familySelect.value;
+      this.currentDesign.family = famId;
+      this.currentDesign.controls.subMode = getDefaultSubMode(famId);
+      if (!this.locks.family) {
+        this.locks.family = true;
+        this.dom.familyLockBtn.classList.add('locked');
+        this.dom.familyLockBtn.setAttribute('aria-pressed', 'true');
+      }
+      this.syncControlsToUI();
+      this.rebuildScene();
+    });
+
+    // Framing pills
+    this.dom.framingPills.querySelectorAll('.seg-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.currentDesign.controls.framingPreset = btn.dataset.framing;
+        this.syncFramingPills();
+        this.rebuildScene();
+      });
+    });
 
     // Lock toggles
     this.dom.lockButtons.forEach(btn => {
@@ -118,23 +187,24 @@ export class App {
       });
     });
 
-    // Composition slider listeners (rebuilds Scene)
+    // Composition sliders (rebuild scene)
     const compSliders = [
       { el: this.dom.complexitySlider, valEl: this.dom.complexityVal, key: 'complexity' },
       { el: this.dom.symmetrySlider, valEl: this.dom.symmetryVal, key: 'symmetry' },
       { el: this.dom.focusSlider, valEl: this.dom.focusVal, key: 'focus' }
     ];
-
     compSliders.forEach(({ el, valEl, key }) => {
       el.addEventListener('input', () => {
         const v = parseFloat(el.value);
         valEl.textContent = v.toFixed(2);
         this.currentDesign.controls[key] = v;
-        this.rebuildScene();
+        this.rebuildScene({ skipKnockout: true });
+      });
+      el.addEventListener('change', () => {
+        this.scheduleKnockoutFlush();
       });
     });
 
-    // Checkboxes (rebuilds Scene)
     this.dom.depthTiltCheck.addEventListener('change', () => {
       this.currentDesign.controls.depthTilt = this.dom.depthTiltCheck.checked;
       this.rebuildScene();
@@ -145,7 +215,7 @@ export class App {
       this.rebuildScene();
     });
 
-    // Finish slider listeners (instant restyle, does NOT rebuild scene)
+    // Finish sliders: 60fps style-only on input, knockout on pointerup/change/60ms debounce
     const finishSliders = [
       { el: this.dom.roughnessSlider, valEl: this.dom.roughnessVal, key: 'roughness', fmt: v => v.toFixed(2) },
       { el: this.dom.lineBreaksSlider, valEl: this.dom.lineBreaksVal, key: 'lineBreaks', fmt: v => v.toFixed(2) },
@@ -159,22 +229,25 @@ export class App {
         const v = parseFloat(el.value);
         valEl.textContent = fmt(v);
         this.currentDesign.controls[key] = v;
-        this.renderFinishPipeline();
+        this.renderFinishPipeline(performance.now(), { skipKnockout: true });
+        this.scheduleKnockoutFlush();
       });
+      el.addEventListener('pointerup', () => this.flushKnockout());
+      el.addEventListener('change', () => this.flushKnockout());
     });
 
-    // Profile drawer toggle
+    // Profile drawer
     this.dom.toggleProfileBtn.addEventListener('click', () => {
       this.dom.profileDrawer.classList.toggle('open');
       this.updateProfileUI();
     });
 
     this.dom.resetProfileBtn.addEventListener('click', () => {
-      if (confirm('Reset taste profile to the 25 references baseline?')) {
+      if (confirm('Reset taste profile to the baseline?')) {
         this.tasteProfile.resetProfile();
         this.updateProfileUI();
         this.updateFavoritesUI();
-        this.showToast('Taste profile reset to baseline');
+        this.showToast('Taste profile reset');
       }
     });
 
@@ -190,20 +263,16 @@ export class App {
       this.showToast('Profile & favorites exported');
     });
 
-    this.dom.importJsonBtn.addEventListener('click', () => {
-      this.dom.importFileInput.click();
-    });
-
+    this.dom.importJsonBtn.addEventListener('click', () => this.dom.importFileInput.click());
     this.dom.importFileInput.addEventListener('change', (e) => {
       const file = e.target.files[0];
       if (!file) return;
       const reader = new FileReader();
       reader.onload = (event) => {
-        const ok = this.tasteProfile.importJSON(event.target.result);
-        if (ok) {
+        if (this.tasteProfile.importJSON(event.target.result)) {
           this.updateProfileUI();
           this.updateFavoritesUI();
-          this.showToast('Profile & favorites successfully imported!');
+          this.showToast('Profile & favorites imported!');
         } else {
           alert('Invalid JSON file.');
         }
@@ -211,9 +280,26 @@ export class App {
       reader.readAsText(file);
     });
 
-    // Keyboard shortcuts (Space/Right = Next, Left = Back, S = Save, C = Copy)
+    // Drag-and-drop SVG re-import onto canvas viewport
+    const vp = this.dom.canvasViewport;
+    vp.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      vp.classList.add('drag-over');
+    });
+    vp.addEventListener('dragleave', () => vp.classList.remove('drag-over'));
+    vp.addEventListener('drop', (e) => {
+      e.preventDefault();
+      vp.classList.remove('drag-over');
+      const file = e.dataTransfer?.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => this.restoreFromSVGMarkup(ev.target.result);
+      reader.readAsText(file);
+    });
+
+    // Keyboard shortcuts
     window.addEventListener('keydown', (e) => {
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON' || e.target.tagName === 'SELECT') return;
       if (e.key === ' ' || e.key === 'ArrowRight') {
         e.preventDefault();
         this.next();
@@ -230,44 +316,100 @@ export class App {
     });
   }
 
+  restoreFromSVGMarkup(svgText) {
+    const match = svgText.match(/data-atom-state=(['"])(.*?)\1/);
+    if (!match) {
+      this.showToast('No Atom state metadata found in SVG');
+      return false;
+    }
+    try {
+      const rawJson = match[2]
+        .replace(/&amp;/g, '&')
+        .replace(/&#39;/g, "'")
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>');
+      const state = JSON.parse(rawJson);
+      const family = GENERATOR_FAMILIES[state.generator] ? state.generator : 'rosettes';
+      const subMode = normalizeSubMode(family, state.subMode);
+      const restoredDesign = {
+        family,
+        seed: state.seed || 123456,
+        controls: {
+          ...state.params,
+          subMode,
+          framingPreset: normalizeFramingMode(state.params?.framingPreset)
+        },
+        mood: 'Restored SVG',
+        isWildcard: false
+      };
+      this.pushHistory(restoredDesign);
+      this.loadDesign(restoredDesign);
+      this.showToast(`Restored ${GENERATOR_FAMILIES[family].name} #${restoredDesign.seed}`);
+      return true;
+    } catch (err) {
+      this.showToast('Failed to parse SVG state metadata');
+      return false;
+    }
+  }
+
+  setPreviewTheme(theme) {
+    this.previewTheme = theme;
+    document.body.classList.toggle('light-theme', theme === 'light');
+    this.dom.canvasViewport.classList.toggle('transparent-bg', theme === 'transparent');
+    this.dom.themePills.querySelectorAll('.seg-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.theme === theme);
+    });
+    this.renderFinishPipeline(performance.now(), { skipKnockout: false });
+  }
+
   toggleLock(controlName, btnElement) {
     this.locks[controlName] = !this.locks[controlName];
     const isLocked = this.locks[controlName];
     btnElement.classList.toggle('locked', isLocked);
     btnElement.setAttribute('aria-pressed', isLocked);
-    btnElement.title = isLocked ? `Locked (${controlName} preserved on Next)` : `Unlocked`;
     this.showToast(`${controlName} ${isLocked ? 'locked' : 'unlocked'}`);
+  }
+
+  pushHistory(design) {
+    if (this.historyIndex < this.history.length - 1) {
+      this.history = this.history.slice(0, this.historyIndex + 1);
+    }
+    this.history.push(design);
+    if (this.history.length > MAX_HISTORY) {
+      this.history.shift();
+    }
+    this.historyIndex = this.history.length - 1;
   }
 
   next() {
     const nextResult = this.tasteProfile.generateNext(
       this.locks,
-      this.currentDesign ? this.currentDesign.controls : {}
+      this.currentDesign || {}
     );
 
     const newDesign = {
       family: nextResult.family,
       seed: nextResult.seed,
       controls: nextResult.controls,
+      mood: nextResult.mood,
       isWildcard: nextResult.isWildcard
     };
 
-    // Trim history forward branch if we went back earlier
-    if (this.historyIndex < this.history.length - 1) {
-      this.history = this.history.slice(0, this.historyIndex + 1);
-    }
-
-    this.history.push(newDesign);
-    this.historyIndex = this.history.length - 1;
-
+    this.pushHistory(newDesign);
     this.loadDesign(newDesign);
   }
 
   back() {
     if (this.historyIndex > 0) {
       this.historyIndex--;
-      const prevDesign = this.history[this.historyIndex];
-      this.loadDesign(prevDesign);
+      this.loadDesign(this.history[this.historyIndex]);
+    }
+  }
+
+  forward() {
+    if (this.historyIndex < this.history.length - 1) {
+      this.historyIndex++;
+      this.loadDesign(this.history[this.historyIndex]);
     }
   }
 
@@ -278,8 +420,45 @@ export class App {
     this.updateNavButtons();
   }
 
+  syncFramingPills() {
+    const mode = normalizeFramingMode(this.currentDesign.controls.framingPreset);
+    this.dom.framingPills.querySelectorAll('.seg-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.framing === mode);
+    });
+  }
+
+  syncSubModePills() {
+    const fam = GENERATOR_FAMILIES[this.currentDesign.family];
+    const subModes = fam?.subModes || [];
+    if (subModes.length === 0) {
+      this.dom.subModeWrap.classList.add('hidden');
+      this.dom.subModePills.innerHTML = '';
+      return;
+    }
+    this.dom.subModeWrap.classList.remove('hidden');
+    const active = normalizeSubMode(this.currentDesign.family, this.currentDesign.controls.subMode);
+    this.currentDesign.controls.subMode = active;
+
+    this.dom.subModePills.innerHTML = '';
+    for (const sm of subModes) {
+      const btn = document.createElement('button');
+      btn.className = `seg-btn${sm.id === active ? ' active' : ''}`;
+      btn.textContent = sm.label;
+      btn.addEventListener('click', () => {
+        this.currentDesign.controls.subMode = sm.id;
+        this.syncSubModePills();
+        this.rebuildScene();
+      });
+      this.dom.subModePills.appendChild(btn);
+    }
+  }
+
   syncControlsToUI() {
     const c = this.currentDesign.controls;
+    this.dom.familySelect.value = this.currentDesign.family;
+    this.syncSubModePills();
+    this.syncFramingPills();
+
     this.dom.complexitySlider.value = c.complexity;
     this.dom.complexityVal.textContent = c.complexity.toFixed(2);
     this.dom.symmetrySlider.value = c.symmetry;
@@ -290,30 +469,23 @@ export class App {
     this.dom.depthTiltCheck.checked = !!c.depthTilt;
     this.dom.annotationsCheck.checked = !!c.annotations;
 
-    this.dom.roughnessSlider.value = c.roughness;
-    this.dom.roughnessVal.textContent = c.roughness.toFixed(2);
-    this.dom.lineBreaksSlider.value = c.lineBreaks;
-    this.dom.lineBreaksVal.textContent = c.lineBreaks.toFixed(2);
-    this.dom.strokeWeightSlider.value = c.strokeWeight;
-    this.dom.strokeWeightVal.textContent = `${c.strokeWeight.toFixed(1)}px`;
-    this.dom.weightVariationSlider.value = c.weightVariation;
-    this.dom.weightVariationVal.textContent = c.weightVariation.toFixed(2);
-    this.dom.overshootSlider.value = c.overshoot;
-    this.dom.overshootVal.textContent = c.overshoot.toFixed(2);
+    this.dom.roughnessSlider.value = c.roughness ?? 0;
+    this.dom.roughnessVal.textContent = (c.roughness ?? 0).toFixed(2);
+    this.dom.lineBreaksSlider.value = c.lineBreaks ?? 0;
+    this.dom.lineBreaksVal.textContent = (c.lineBreaks ?? 0).toFixed(2);
+    this.dom.strokeWeightSlider.value = c.strokeWeight ?? 1.4;
+    this.dom.strokeWeightVal.textContent = `${(c.strokeWeight ?? 1.4).toFixed(1)}px`;
+    this.dom.weightVariationSlider.value = c.weightVariation ?? 0;
+    this.dom.weightVariationVal.textContent = (c.weightVariation ?? 0).toFixed(2);
+    this.dom.overshootSlider.value = c.overshoot ?? 0;
+    this.dom.overshootVal.textContent = (c.overshoot ?? 0).toFixed(2);
 
-    // Badges
-    const famObj = GENERATOR_FAMILIES[this.currentDesign.family];
-    this.dom.familyBadge.textContent = famObj ? famObj.name : this.currentDesign.family;
     this.dom.seedBadge.textContent = `#${this.currentDesign.seed}`;
-
-    if (this.currentDesign.isWildcard) {
-      this.dom.wildcardBadge.classList.remove('hidden');
-    } else {
-      this.dom.wildcardBadge.classList.add('hidden');
-    }
+    this.dom.moodBadge.textContent = this.currentDesign.mood || 'Custom';
+    this.dom.wildcardBadge.classList.toggle('hidden', !this.currentDesign.isWildcard);
   }
 
-  rebuildScene() {
+  rebuildScene(options = {}) {
     const t0 = performance.now();
     const prng = createPRNG(this.currentDesign.seed);
     this.currentScene = generateScene(
@@ -322,64 +494,84 @@ export class App {
       this.currentDesign.controls
     );
 
-    this.renderFinishPipeline(t0);
+    const activeLayers = this.currentScene.getActiveLayers();
+    this.dom.layerCountBadge.textContent = `${activeLayers.length} ${activeLayers.length === 1 ? 'Layer' : 'Layers'}`;
+    this.dom.layerCountBadge.title = `Active layers: ${activeLayers.join(' · ')}`;
+
+    this.renderFinishPipeline(t0, options);
   }
 
-  renderFinishPipeline(startTime = performance.now()) {
+  scheduleKnockoutFlush() {
+    clearTimeout(this.knockoutTimer);
+    this.knockoutTimer = setTimeout(() => {
+      this.flushKnockout();
+    }, 60);
+  }
+
+  flushKnockout() {
+    if (this.knockoutTimer) {
+      clearTimeout(this.knockoutTimer);
+      this.knockoutTimer = null;
+    }
+    this.renderFinishPipeline(performance.now(), { skipKnockout: false });
+  }
+
+  renderFinishPipeline(startTime = performance.now(), options = {}) {
     if (!this.currentScene) return;
 
-    // Run finish pipeline
     const rendered = runFinishPipeline(
       this.currentScene,
-      this.currentDesign.controls
+      this.currentDesign.controls,
+      options
     );
 
-    // Color based on preview theme
-    // Note: Export SVG always uses pure black (#000000)
     const previewStroke = this.previewTheme === 'dark' ? '#E6EDF3' : '#111827';
-    const previewFill = this.previewTheme === 'dark' ? '#E6EDF3' : '#111827';
+    const previewFill = previewStroke;
 
-    // Generate preview SVG
+    const stateMetadata = {
+      generator: this.currentDesign.family,
+      subMode: this.currentDesign.controls.subMode,
+      seed: this.currentDesign.seed,
+      params: this.currentDesign.controls
+    };
+
     const previewSvg = writeSVG(rendered, {
       strokeColor: previewStroke,
-      fillColor: previewFill
+      fillColor: previewFill,
+      nonScalingStroke: this.nonScalingStroke
     });
 
-    // Generate clean black export SVG
     this.lastRenderedSVG = writeSVG(rendered, {
       strokeColor: '#000000',
-      fillColor: '#000000'
+      fillColor: '#000000',
+      nonScalingStroke: this.nonScalingStroke,
+      stateMetadata
     });
 
     this.dom.canvasContainer.innerHTML = previewSvg;
 
-    // Count anchor points (approximate from path commands)
     const anchorMatches = this.lastRenderedSVG.match(/[MLHVCSQTAZ]/gi) || [];
     const anchorCount = anchorMatches.length;
     this.dom.anchorCountBadge.textContent = `${anchorCount} anchors`;
-    if (anchorCount > 3000) {
-      this.dom.anchorCountBadge.classList.add('warn');
-    } else {
-      this.dom.anchorCountBadge.classList.remove('warn');
-    }
+    this.dom.anchorCountBadge.classList.toggle('warn', anchorCount >= 400);
 
     const elapsed = Math.round(performance.now() - startTime);
     this.dom.renderTimeBadge.textContent = `${elapsed} ms`;
   }
 
   save() {
-    const saved = this.tasteProfile.saveDesign(this.currentDesign);
+    this.tasteProfile.saveDesign(this.currentDesign);
     this.updateFavoritesUI();
     this.updateProfileUI();
-    this.showToast('Saved to favorites & learned by taste profile!');
+    this.showToast('Pinned to strip & learned by taste profile!');
   }
 
   copySVG() {
+    this.flushKnockout();
     if (!this.lastRenderedSVG) return;
     navigator.clipboard.writeText(this.lastRenderedSVG).then(() => {
       this.showToast('Copied SVG to clipboard for Figma!');
-    }).catch(err => {
-      // Fallback
+    }).catch(() => {
       const ta = document.createElement('textarea');
       ta.value = this.lastRenderedSVG;
       document.body.appendChild(ta);
@@ -391,6 +583,7 @@ export class App {
   }
 
   downloadSVG() {
+    this.flushKnockout();
     if (!this.lastRenderedSVG) return;
     const blob = new Blob([this.lastRenderedSVG], { type: 'image/svg+xml' });
     const url = URL.createObjectURL(blob);
@@ -402,15 +595,9 @@ export class App {
     this.showToast('Downloaded SVG');
   }
 
-  toggleTheme() {
-    this.previewTheme = this.previewTheme === 'dark' ? 'light' : 'dark';
-    document.body.classList.toggle('light-theme', this.previewTheme === 'light');
-    this.dom.themeToggleBtn.textContent = this.previewTheme === 'dark' ? '☀️ Light' : '🌙 Dark';
-    this.renderFinishPipeline();
-  }
-
   updateNavButtons() {
     this.dom.backBtn.disabled = (this.historyIndex <= 0);
+    this.dom.forwardBtn.disabled = (this.historyIndex >= this.history.length - 1);
   }
 
   updateFavoritesUI() {
@@ -418,7 +605,7 @@ export class App {
     this.dom.favoritesCount.textContent = favs.length;
 
     if (favs.length === 0) {
-      this.dom.favoritesList.innerHTML = '<div class="empty-favs">No saved patterns yet. Press "Save" on a pattern you like!</div>';
+      this.dom.favoritesList.innerHTML = '<div class="empty-favs">No pinned patterns yet. Press "★ Pin" on one you like!</div>';
       return;
     }
 
@@ -431,7 +618,7 @@ export class App {
       card.innerHTML = `
         <div class="fav-info">
           <div class="fav-title">${famName}</div>
-          <div class="fav-sub">#${fav.seed} · ${new Date(fav.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+          <div class="fav-sub">#${fav.seed}${fav.subMode ? ' · ' + fav.subMode : ''}</div>
         </div>
         <div class="fav-actions">
           <button class="btn-fav-load" title="Load into canvas">Load</button>
@@ -440,24 +627,28 @@ export class App {
       `;
 
       card.querySelector('.btn-fav-load').addEventListener('click', () => {
-        this.loadDesign({
+        const loaded = {
           family: fav.family,
           seed: fav.seed,
           controls: {
+            subMode: normalizeSubMode(fav.family, fav.subMode),
+            framingPreset: normalizeFramingMode(fav.framingPreset),
             complexity: fav.complexity,
             symmetry: fav.symmetry,
             focus: fav.focus,
             depthTilt: fav.depthTilt,
             annotations: fav.annotations,
-            roughness: fav.roughness,
-            lineBreaks: fav.lineBreaks,
-            strokeWeight: fav.strokeWeight,
-            weightVariation: fav.weightVariation,
-            overshoot: fav.overshoot
+            roughness: fav.roughness ?? 0,
+            lineBreaks: fav.lineBreaks ?? 0,
+            strokeWeight: fav.strokeWeight ?? 1.4,
+            weightVariation: fav.weightVariation ?? 0,
+            overshoot: fav.overshoot ?? 0
           },
           isWildcard: false
-        });
-        this.showToast(`Loaded favorite #${fav.seed}`);
+        };
+        this.pushHistory(loaded);
+        this.loadDesign(loaded);
+        this.showToast(`Loaded pinned #${fav.seed}`);
       });
 
       card.querySelector('.btn-fav-del').addEventListener('click', (e) => {
@@ -475,7 +666,6 @@ export class App {
     const weights = this.tasteProfile.familyWeights;
     const counts = this.tasteProfile.familyCounts;
 
-    // Render family weights list with nudge buttons
     this.dom.familyWeightsList.innerHTML = '';
     for (const [fId, w] of Object.entries(weights)) {
       const row = document.createElement('div');
@@ -511,17 +701,13 @@ export class App {
       this.dom.familyWeightsList.appendChild(row);
     }
 
-    // Render slider stats
     this.dom.sliderStatsList.innerHTML = '';
     for (const [key, stat] of Object.entries(this.tasteProfile.sliderStats)) {
       const row = document.createElement('div');
       row.className = 'profile-slider-row';
-      const m = stat.mean.toFixed(2);
-      const s = stat.stdDev.toFixed(2);
-
       row.innerHTML = `
         <span class="p-slider-name">${key}</span>
-        <span class="p-slider-val">μ=${m} ± σ=${s}</span>
+        <span class="p-slider-val">μ=${stat.mean.toFixed(2)} ± σ=${stat.stdDev.toFixed(2)}</span>
       `;
       this.dom.sliderStatsList.appendChild(row);
     }
@@ -538,7 +724,6 @@ export class App {
   }
 }
 
-// Bootstrap application on DOM load
 window.addEventListener('DOMContentLoaded', () => {
   window.app = new App();
 });

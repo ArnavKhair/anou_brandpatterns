@@ -1,27 +1,47 @@
 /**
- * Taste Profile & Learning Loop Engine
+ * Taste Profile & Learning Loop Engine (Phase 1 Analytic Defaults)
  *
- * Rules:
- * - Bayesian / Laplace smoothed family weights initialized from 25 references
- * - Saved designs move the slider means and variance (spread never below 0.12)
- * - Checkbox probabilities have 10% floor
- * - Every 5th "Next" is a Wildcard ignoring the profile
- * - Skips designs within 0.1 on every control of the last 5 in the same family
- * - Locked controls preserve their current values
- * - JSON import & export
+ * - roughness, lineBreaks, and overshoot default to 0.0 across all mood profiles & wildcard
+ *   so Next Pattern always produces razor-sharp vector output unless manually adjusted.
+ * - Supports only CENTERED EMBLEM and OFF-AXIS FOCAL framing modes.
+ * - Supports subMode & family locking.
  */
 
-import { createPRNG } from './math.js';
+import { createPRNG, normalizeFramingMode } from './math.js';
 import { INITIAL_REFERENCES } from './initial-references.js';
+import { GENERATOR_FAMILIES, getDefaultSubMode, normalizeSubMode } from './generators/index.js';
 
-const ALL_FAMILIES = [
-  'rosettes',
-  'wireframes',
-  'tangent_chains',
-  'lobes',
-  'field_lines',
-  'orbit_systems',
-  'particle_bursts'
+const ALL_FAMILIES = Object.keys(GENERATOR_FAMILIES);
+
+export const MOOD_PROFILES = [
+  {
+    name: 'Stark Minimal',
+    complexity: 0.25, symmetry: 0.90, focus: 0.80,
+    roughness: 0.00, lineBreaks: 0.00, strokeWeight: 2.0, weightVariation: 0.00, overshoot: 0.00,
+    depthTilt: false, annotations: false,
+    framing: ['CENTERED EMBLEM', 'OFF-AXIS FOCAL']
+  },
+  {
+    name: 'Swiss Architectural',
+    complexity: 0.55, symmetry: 0.88, focus: 0.70,
+    roughness: 0.00, lineBreaks: 0.00, strokeWeight: 1.2, weightVariation: 0.00, overshoot: 0.00,
+    depthTilt: false, annotations: true,
+    framing: ['CENTERED EMBLEM', 'OFF-AXIS FOCAL']
+  },
+  {
+    name: 'Luminous Optical',
+    complexity: 0.82, symmetry: 0.80, focus: 0.75,
+    roughness: 0.00, lineBreaks: 0.00, strokeWeight: 0.8, weightVariation: 0.00, overshoot: 0.00,
+    depthTilt: false, annotations: false,
+    framing: ['CENTERED EMBLEM', 'OFF-AXIS FOCAL']
+  },
+  {
+    name: 'Scientific Plate',
+    complexity: 0.65, symmetry: 0.45, focus: 0.55,
+    roughness: 0.00, lineBreaks: 0.00, strokeWeight: 1.4, weightVariation: 0.00, overshoot: 0.00,
+    depthTilt: true, annotations: true,
+    framing: ['OFF-AXIS FOCAL', 'CENTERED EMBLEM']
+  }
 ];
 
 const SLIDER_KEYS = [
@@ -35,85 +55,90 @@ const SLIDER_KEYS = [
   'overshoot'
 ];
 
-const CHECKBOX_KEYS = [
-  'depthTilt',
-  'annotations'
-];
+const ZERO_DEFAULT_TEXTURE_KEYS = new Set(['roughness', 'lineBreaks', 'overshoot', 'weightVariation']);
+const CHECKBOX_KEYS = ['depthTilt', 'annotations'];
 
 export class TasteProfileManager {
   constructor(storageKey = 'atom_pattern_taste_profile') {
     this.storageKey = storageKey;
     this.nextCount = 0;
-    this.recentHistory = []; // Last shown designs: { family, controls }
-    this.savedDesigns = [];  // User favorites
-    this.familyNudges = {};  // Manual user nudges
+    this.recentHistory = [];
+    this.savedDesigns = [];
+    this.familyNudges = {};
 
-    // Initialize with 25 references
     this.references = INITIAL_REFERENCES.slice();
     this.computeStatistics();
   }
 
   computeStatistics() {
-    // Combine references and saved designs
     const corpus = [...this.references, ...this.savedDesigns];
-
-    // Family counts
     this.familyCounts = {};
     for (const f of ALL_FAMILIES) this.familyCounts[f] = 0;
-
     for (const item of corpus) {
       if (this.familyCounts[item.family] !== undefined) {
         this.familyCounts[item.family]++;
       }
     }
 
-    // Smoothed family weights
     this.familyWeights = {};
     const totalCount = corpus.length;
     for (const f of ALL_FAMILIES) {
       const nudge = this.familyNudges[f] || 0;
-      // Laplace smoothed: (count + 1) / (total + 7) + nudge
-      const rawWeight = (this.familyCounts[f] + 1) / (totalCount + 7);
+      const rawWeight = (this.familyCounts[f] + 1) / (totalCount + ALL_FAMILIES.length);
       this.familyWeights[f] = Math.max(0.02, rawWeight + nudge);
     }
 
-    // Slider statistics: mean and stdDev
     this.sliderStats = {};
     for (const key of SLIDER_KEYS) {
-      const values = corpus.map(item => item[key] ?? 0.5);
+      const values = corpus.map(item => ZERO_DEFAULT_TEXTURE_KEYS.has(key) ? 0.0 : (item[key] ?? 0.5));
       const mean = values.reduce((a, b) => a + b, 0) / values.length;
       const variance = values.reduce((acc, v) => acc + Math.pow(v - mean, 2), 0) / values.length;
-      const stdDev = Math.max(0.12, Math.sqrt(variance)); // Floor at 0.12
-
-      this.sliderStats[key] = { mean, stdDev };
+      this.sliderStats[key] = { mean, stdDev: ZERO_DEFAULT_TEXTURE_KEYS.has(key) ? 0.0 : Math.max(0.12, Math.sqrt(variance)) };
     }
 
-    // Checkbox probabilities (floor at 0.10)
+    this.familySliderStats = {};
+    for (const f of ALL_FAMILIES) {
+      const famItems = corpus.filter(item => item.family === f);
+      this.familySliderStats[f] = {};
+      for (const key of SLIDER_KEYS) {
+        if (ZERO_DEFAULT_TEXTURE_KEYS.has(key)) {
+          this.familySliderStats[f][key] = { mean: 0.0, stdDev: 0.0 };
+        } else if (famItems.length === 0) {
+          this.familySliderStats[f][key] = this.sliderStats[key];
+        } else {
+          const vals = famItems.map(item => item[key] ?? this.sliderStats[key].mean);
+          const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+          const variance = vals.reduce((acc, v) => acc + Math.pow(v - mean, 2), 0) / vals.length;
+          this.familySliderStats[f][key] = { mean, stdDev: Math.max(0.14, Math.sqrt(variance)) };
+        }
+      }
+    }
+
     this.checkboxProbs = {};
     for (const key of CHECKBOX_KEYS) {
       const trueCount = corpus.filter(item => !!item[key]).length;
-      const prob = Math.max(0.10, Math.min(0.90, trueCount / corpus.length));
-      this.checkboxProbs[key] = prob;
+      this.checkboxProbs[key] = Math.max(0.10, Math.min(0.90, trueCount / corpus.length));
     }
   }
 
   saveDesign(design) {
-    // Save design with its exact family, seed, and controls
     const toSave = {
       id: `fav-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       timestamp: Date.now(),
       family: design.family,
+      subMode: normalizeSubMode(design.family, design.controls.subMode),
       seed: design.seed,
+      framingPreset: normalizeFramingMode(design.controls.framingPreset),
       complexity: design.controls.complexity,
       symmetry: design.controls.symmetry,
       focus: design.controls.focus,
-      depthTilt: design.controls.depthTilt,
-      annotations: design.controls.annotations,
-      roughness: design.controls.roughness,
-      lineBreaks: design.controls.lineBreaks,
-      strokeWeight: design.controls.strokeWeight,
-      weightVariation: design.controls.weightVariation,
-      overshoot: design.controls.overshoot
+      depthTilt: !!design.controls.depthTilt,
+      annotations: !!design.controls.annotations,
+      roughness: design.controls.roughness ?? 0,
+      lineBreaks: design.controls.lineBreaks ?? 0,
+      strokeWeight: design.controls.strokeWeight ?? 1.4,
+      weightVariation: design.controls.weightVariation ?? 0,
+      overshoot: design.controls.overshoot ?? 0
     };
 
     this.savedDesigns.push(toSave);
@@ -140,34 +165,33 @@ export class TasteProfileManager {
     this.persistLocal();
   }
 
-  generateNext(locks = {}, currentValues = {}, prng = createPRNG(Date.now())) {
+  generateNext(locks = {}, currentDesign = {}, prng = createPRNG(Date.now())) {
     this.nextCount++;
     const isWildcard = (this.nextCount % 5 === 0);
+    const chosenMood = MOOD_PROFILES[(this.nextCount - 1) % MOOD_PROFILES.length];
+    const currentValues = currentDesign.controls || {};
 
-    let chosenFamily;
+    let chosenFamily = locks.family && currentDesign.family ? currentDesign.family : null;
     let chosenControls;
 
-    // Retry loop for the skip rule
     for (let attempt = 0; attempt < 10; attempt++) {
-      if (isWildcard) {
-        // Wildcard ignores profile entirely
-        chosenFamily = prng.choice(ALL_FAMILIES);
-        chosenControls = this.sampleWildcardControls(locks, currentValues, prng);
-      } else {
-        // Sample family by smoothed weights
-        const weightsArray = ALL_FAMILIES.map(f => this.familyWeights[f]);
-        chosenFamily = prng.weightedChoice(ALL_FAMILIES, weightsArray);
-        chosenControls = this.sampleProfileControls(locks, currentValues, prng);
+      if (!locks.family || !currentDesign.family) {
+        if (isWildcard) {
+          chosenFamily = prng.choice(ALL_FAMILIES);
+        } else {
+          const weightsArray = ALL_FAMILIES.map(f => this.familyWeights[f]);
+          chosenFamily = prng.weightedChoice(ALL_FAMILIES, weightsArray);
+        }
       }
 
-      // Check skip rule: skip if within 0.1 on every control of last 5 in same family
-      const tooClose = this.isTooCloseToRecent(chosenFamily, chosenControls);
-      if (!tooClose) break;
+      chosenControls = isWildcard
+        ? this.sampleWildcardControls(locks, currentValues, prng, chosenFamily)
+        : this.sampleProfileControls(locks, currentValues, prng, chosenFamily, chosenMood);
+
+      if (!this.isTooCloseToRecent(chosenFamily, chosenControls)) break;
     }
 
     const newSeed = prng.rangeInt(100000, 9999999);
-
-    // Record into recent history (keep last 20)
     this.recentHistory.push({
       family: chosenFamily,
       controls: { ...chosenControls },
@@ -179,56 +203,79 @@ export class TasteProfileManager {
       family: chosenFamily,
       seed: newSeed,
       controls: chosenControls,
+      mood: isWildcard ? 'Wildcard' : chosenMood.name,
       isWildcard
     };
   }
 
-  sampleProfileControls(locks, currentValues, prng) {
+  sampleProfileControls(locks, currentValues, prng, family, mood = null) {
     const controls = {};
+    const famStats = (family && this.familySliderStats && this.familySliderStats[family]) || this.sliderStats;
 
-    // Sliders
     for (const key of SLIDER_KEYS) {
       if (locks[key] && currentValues[key] !== undefined) {
         controls[key] = currentValues[key];
+      } else if (ZERO_DEFAULT_TEXTURE_KEYS.has(key)) {
+        controls[key] = 0.0;
       } else {
-        const stats = this.sliderStats[key];
-        let val;
+        const stats = famStats[key] || this.sliderStats[key];
+        const targetMean = mood ? (mood[key] * 0.65 + stats.mean * 0.35) : stats.mean;
+        const spread = mood ? Math.max(0.08, stats.stdDev * 0.75) : stats.stdDev;
+        let val = prng.gaussian(targetMean, spread);
         if (key === 'strokeWeight') {
-          // Stroke weight is 0.6 to 6.0, default 1.4
-          val = prng.gaussian(stats.mean, stats.stdDev);
           val = Math.max(0.6, Math.min(6.0, val));
         } else {
-          // Standard 0 to 1 sliders
-          val = prng.gaussian(stats.mean, stats.stdDev);
           val = Math.max(0, Math.min(1, val));
         }
         controls[key] = parseFloat(val.toFixed(2));
       }
     }
 
-    // Checkboxes
     for (const key of CHECKBOX_KEYS) {
       if (locks[key] && currentValues[key] !== undefined) {
         controls[key] = currentValues[key];
+      } else if (mood) {
+        controls[key] = prng.boolean(mood[key] ? 0.80 : 0.20);
       } else {
-        const p = this.checkboxProbs[key] || 0.5;
-        controls[key] = prng.boolean(p);
+        controls[key] = prng.boolean(this.checkboxProbs[key] || 0.5);
       }
+    }
+
+    // Sub-mode sampling
+    const famObj = GENERATOR_FAMILIES[family];
+    if (locks.subMode && currentValues.subMode !== undefined) {
+      controls.subMode = normalizeSubMode(family, currentValues.subMode);
+    } else if (famObj && famObj.subModes.length > 0) {
+      controls.subMode = prng.choice(famObj.subModes).id;
+    } else {
+      controls.subMode = getDefaultSubMode(family);
+    }
+
+    // Framing mode sampling
+    if (locks.framingPreset && currentValues.framingPreset) {
+      controls.framingPreset = normalizeFramingMode(currentValues.framingPreset);
+    } else {
+      controls.framingPreset = mood && mood.framing
+        ? prng.choice(mood.framing)
+        : prng.choice(['CENTERED EMBLEM', 'OFF-AXIS FOCAL']);
     }
 
     return controls;
   }
 
-  sampleWildcardControls(locks, currentValues, prng) {
+  sampleWildcardControls(locks, currentValues, prng, family) {
     const controls = {};
-
     for (const key of SLIDER_KEYS) {
       if (locks[key] && currentValues[key] !== undefined) {
         controls[key] = currentValues[key];
+      } else if (ZERO_DEFAULT_TEXTURE_KEYS.has(key)) {
+        controls[key] = 0.0;
       } else if (key === 'strokeWeight') {
-        controls[key] = parseFloat(prng.range(0.8, 3.5).toFixed(2));
+        controls[key] = parseFloat(prng.range(0.8, 3.0).toFixed(2));
+      } else if (key === 'weightVariation') {
+        controls[key] = 0.0;
       } else {
-        controls[key] = parseFloat(prng.range(0.1, 0.9).toFixed(2));
+        controls[key] = parseFloat(prng.range(0.15, 0.90).toFixed(2));
       }
     }
 
@@ -236,38 +283,45 @@ export class TasteProfileManager {
       if (locks[key] && currentValues[key] !== undefined) {
         controls[key] = currentValues[key];
       } else {
-        controls[key] = prng.boolean(0.5);
+        controls[key] = prng.boolean(0.35);
       }
     }
+
+    const famObj = GENERATOR_FAMILIES[family];
+    if (locks.subMode && currentValues.subMode !== undefined) {
+      controls.subMode = normalizeSubMode(family, currentValues.subMode);
+    } else if (famObj && famObj.subModes.length > 0) {
+      controls.subMode = prng.choice(famObj.subModes).id;
+    } else {
+      controls.subMode = getDefaultSubMode(family);
+    }
+
+    controls.framingPreset = (locks.framingPreset && currentValues.framingPreset)
+      ? normalizeFramingMode(currentValues.framingPreset)
+      : prng.choice(['CENTERED EMBLEM', 'OFF-AXIS FOCAL']);
 
     return controls;
   }
 
   isTooCloseToRecent(family, candidateControls) {
-    // Look at last 5 designs shown in this same family
-    const recentSameFamily = this.recentHistory
-      .filter(h => h.family === family)
-      .slice(-5);
-
+    const recentSameFamily = this.recentHistory.filter(h => h.family === family).slice(-5);
     for (const past of recentSameFamily) {
+      if (past.controls.subMode !== candidateControls.subMode) continue;
       let allWithin01 = true;
-      for (const key of SLIDER_KEYS) {
-        const v1 = candidateControls[key];
-        const v2 = past.controls[key];
-        if (Math.abs(v1 - v2) > 0.10) {
+      for (const key of ['complexity', 'symmetry', 'focus', 'strokeWeight']) {
+        if (Math.abs(candidateControls[key] - past.controls[key]) > 0.10) {
           allWithin01 = false;
           break;
         }
       }
-      if (allWithin01) return true; // Within 0.1 on every control
+      if (allWithin01) return true;
     }
-
     return false;
   }
 
   exportJSON() {
     return JSON.stringify({
-      version: '1.0',
+      version: '2.0',
       exportedAt: new Date().toISOString(),
       savedCount: this.savedDesigns.length,
       familyWeights: this.familyWeights,
@@ -280,7 +334,11 @@ export class TasteProfileManager {
     try {
       const data = JSON.parse(jsonString);
       if (Array.isArray(data.savedDesigns)) {
-        this.savedDesigns = data.savedDesigns;
+        this.savedDesigns = data.savedDesigns.map(d => ({
+          ...d,
+          subMode: normalizeSubMode(d.family, d.subMode),
+          framingPreset: normalizeFramingMode(d.framingPreset)
+        }));
       }
       if (data.familyNudges) {
         this.familyNudges = data.familyNudges;
@@ -301,7 +359,7 @@ export class TasteProfileManager {
         familyNudges: this.familyNudges
       }));
     } catch (e) {
-      // localStorage may fail in sandboxed or file:// contexts
+      // Ignore in non-browser/sandboxed environments
     }
   }
 
@@ -311,7 +369,11 @@ export class TasteProfileManager {
       if (raw) {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed.savedDesigns)) {
-          this.savedDesigns = parsed.savedDesigns;
+          this.savedDesigns = parsed.savedDesigns.map(d => ({
+            ...d,
+            subMode: normalizeSubMode(d.family, d.subMode),
+            framingPreset: normalizeFramingMode(d.framingPreset)
+          }));
         }
         if (parsed.familyNudges) {
           this.familyNudges = parsed.familyNudges;

@@ -730,3 +730,123 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .toast.show {
   transform: translateX(-50%) translateY(0);
 }
+
+/* Phase 1: Archetype, Sub-mode, Framing Pills, Overlay & Accordion */
+.segmented-group {
+  display: inline-flex;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+  gap: 2px;
+}
+
+.seg-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.seg-btn:hover {
+  color: var(--text-primary);
+}
+
+.seg-btn.active {
+  background: var(--accent-blue);
+  color: #FFFFFF;
+}
+
+.inline-select-lock {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.inline-select-lock.hidden {
+  display: none;
+}
+
+.meta-select {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.export-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.nav-history-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.canvas-viewport {
+  position: relative;
+}
+
+.canvas-viewport.transparent-bg {
+  background-color: #E5E7EB;
+  background-image:
+    linear-gradient(45deg, #CBD5E1 25%, transparent 25%),
+    linear-gradient(-45deg, #CBD5E1 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #CBD5E1 75%),
+    linear-gradient(-45deg, transparent 75%, #CBD5E1 75%);
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+}
+
+.canvas-viewport.drag-over {
+  outline: 2px dashed var(--accent-cyan);
+  outline-offset: -4px;
+}
+
+.safe-margin-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  color: var(--accent-cyan);
+}
+
+.safe-margin-overlay.hidden {
+  display: none;
+}
+
+.texture-accordion .accordion-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  list-style: none;
+}
+
+.texture-accordion .accordion-summary::-webkit-details-marker {
+  display: none;
+}
+
+.texture-accordion[open] .accordion-summary {
+  margin-bottom: 12px;
+  color: var(--text-primary);
+}

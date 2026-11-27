@@ -1,163 +1,193 @@
 /**
- * Generator 2: Tangent Chains and Spirals
- * Circles that each touch the previous one, with a dot at every touch point.
- * Radius shrinks by ratio 0.55 to 0.85, curling into an epicycle or spiral.
- * Optional golden-spiral arcs with rotated squares as hairline construction lines.
+ * Generator 2: Tangent Chains & Golden Construction (Phase 1 Analytic)
+ * Sub-modes:
+ * - circle_packing: 6–9 clean circles of varying radii mutually tangent or secant
+ *   inside an oversized outer circle (bleedBounds) that sweeps past the frame edge,
+ *   with crisp nodes at exact tangency points and zero straight lines.
+ * - golden_construction: Full-scale whirling square / golden-ratio construction
+ *   scaled via coreBounds to fill ~75% of the canvas, clean diagonal rays extending
+ *   to the enclosing arc/circle, zero random gaps, zero floating bullseye dots.
  */
 
 import { Scene } from '../scene.js';
 import { sampleArc, applyPlaneTilt, Vec2 } from '../math.js';
 
-export function generateTangentChain(prng, controls) {
+export function normalizeTangentSubMode(subMode) {
+  if (subMode === 'golden_construction') return 'golden_construction';
+  return 'circle_packing'; // Maps legacy 'hybrid' & 'tangent_circles' here
+}
+
+export function generateTangentChain(prng, controls = {}) {
   const scene = new Scene();
-  scene.hasDotRidingCurve = true;
+  const {
+    complexity = 0.5,
+    symmetry = 0.5,
+    focus = 0.5,
+    depthTilt = false,
+    annotations = false,
+    subMode
+  } = controls;
 
-  const { complexity = 0.5, symmetry = 0.5, focus = 0.5, depthTilt = false, annotations = false } = controls;
-  const canvasCenter = { x: 500, y: 500 };
-
+  const mode = normalizeTangentSubMode(subMode);
   const tiltAngle = prng.range(0, Math.PI);
-  const squash = prng.range(0.45, 0.85);
-  const shear = prng.range(-0.15, 0.15);
+  const squash = prng.range(0.62, 0.86);
+  const shear = prng.range(-0.10, 0.10);
+  const transformPt = (pt) => depthTilt ? applyPlaneTilt(pt, tiltAngle, squash, shear, { x: 0, y: 0 }) : pt;
 
-  function transformPt(pt) {
-    if (!depthTilt) return pt;
-    return applyPlaneTilt(pt, tiltAngle, squash, shear, canvasCenter);
-  }
-
-  // Chain parameters
-  const chainLength = Math.round(5 + complexity * 12); // 5 to 17 circles
-  const ratio = prng.range(0.60, 0.85);
-  const baseTurnAngle = prng.range(Math.PI * 0.4, Math.PI * 0.95);
-  const bleed = prng.boolean(0.5); // Biggest arc may bleed off frame
-
-  let currentRadius = bleed ? prng.range(280, 420) : prng.range(180, 260);
-  let currentCenter = {
-    x: canvasCenter.x - currentRadius * 0.4,
-    y: canvasCenter.y + currentRadius * 0.2
+  const emitCircle = (cx, cy, r, opts = {}) => {
+    if (r < 3) return;
+    if (!depthTilt) {
+      scene.addCircle(cx, cy, r, opts);
+    } else {
+      scene.addPath(sampleArc(cx, cy, r, 0, Math.PI * 2, 72).map(transformPt), { ...opts, isClosed: true });
+    }
   };
-  let currentAngle = prng.range(0, Math.PI * 2);
 
-  // If focus is high, shift initial center closer to canvas center
-  if (focus > 0.5) {
-    currentCenter = Vec2.lerp(currentCenter, canvasCenter, (focus - 0.5) * 1.5);
-  }
+  if (mode === 'circle_packing') {
+    const chainCount = Math.round(6 + complexity * 3); // 6 to 9 circles
+    const ratio = prng.range(0.68, 0.82);
+    const turnAngle = prng.range(Math.PI * 0.36, Math.PI * 0.65);
 
-  const centers = [currentCenter];
-  const radii = [currentRadius];
-  const touchPoints = [];
+    let r = 82;
+    let c = { x: -45 * (1 - focus * 0.5), y: 20 };
+    let ang = prng.range(0, Math.PI * 2);
 
-  for (let i = 0; i < chainLength; i++) {
-    const nextRadius = currentRadius * ratio;
-    if (nextRadius < 5) break;
+    const circles = [{ x: c.x, y: c.y, r }];
+    const touchPoints = [];
 
-    // Angle to place next circle tangent to current
-    let turn = baseTurnAngle;
-    if (symmetry < 0.8) {
-      turn += prng.range(-0.25, 0.25) * (1 - symmetry);
+    for (let i = 1; i < chainCount; i++) {
+      const nextR = r * ratio;
+      if (nextR < 10) break;
+      const stepTurn = (symmetry < 0.55 && i % 3 === 2) ? -turnAngle * 0.7 : turnAngle;
+      ang += stepTurn;
+
+      const dist = r + nextR;
+      const nextC = { x: c.x + dist * Math.cos(ang), y: c.y + dist * Math.sin(ang) };
+      touchPoints.push({ x: c.x + r * Math.cos(ang), y: c.y + r * Math.sin(ang) });
+
+      c = nextC;
+      r = nextR;
+      circles.push({ x: c.x, y: c.y, r });
     }
 
-    currentAngle += turn;
-    const distanceBetweenCenters = currentRadius + nextRadius;
-
-    // Next center
-    const nextCenter = {
-      x: currentCenter.x + distanceBetweenCenters * Math.cos(currentAngle),
-      y: currentCenter.y + distanceBetweenCenters * Math.sin(currentAngle)
-    };
-
-    // Touch point sits on line between currentCenter and nextCenter
-    const touchPoint = {
-      x: currentCenter.x + currentRadius * Math.cos(currentAngle),
-      y: currentCenter.y + currentRadius * Math.sin(currentAngle)
-    };
-    touchPoints.push(touchPoint);
-
-    currentCenter = nextCenter;
-    currentRadius = nextRadius;
-    centers.push(currentCenter);
-    radii.push(currentRadius);
-  }
-
-  // Draw circles
-  for (let i = 0; i < centers.length; i++) {
-    const c = centers[i];
-    const r = radii[i];
-    const raw = sampleArc(c.x, c.y, r, 0, Math.PI * 2, 64);
-    const transformed = raw.map(transformPt);
-
-    const isAccent = (i === 1 || (i === 0 && prng.boolean(0.4)));
-    scene.addPath(transformed, {
-      role: isAccent ? 'accent' : 'structure',
-      isClosed: true,
-      isAccent,
-      seed: prng.rangeInt(0, 1000000)
-    });
-  }
-
-  // Dots at touch points
-  for (let i = 0; i < touchPoints.length; i++) {
-    const tp = transformPt(touchPoints[i]);
-    scene.addDot(tp.x, tp.y, prng.range(2.2, 3.8), {
-      filled: true,
-      role: 'nodes'
-    });
-  }
-
-  // Golden spiral arc connecting touch points / centers
-  if (centers.length >= 3) {
-    const spiralPts = [];
-    for (let i = 0; i < centers.length; i++) {
-      spiralPts.push(centers[i]);
-      if (touchPoints[i]) spiralPts.push(touchPoints[i]);
+    // Compute coreBounds tightly around the 6–9 inner circles
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const ci of circles) {
+      minX = Math.min(minX, ci.x - ci.r);
+      minY = Math.min(minY, ci.y - ci.r);
+      maxX = Math.max(maxX, ci.x + ci.r);
+      maxY = Math.max(maxY, ci.y + ci.r);
     }
-    const transformedSpiral = spiralPts.map(transformPt);
-    scene.addPath(transformedSpiral, {
-      role: 'structure',
-      isClosed: false,
-      allowOvershoot: true,
-      seed: prng.rangeInt(0, 1000000)
-    });
+    const coreCx = (minX + maxX) * 0.5;
+    const coreCy = (minY + maxY) * 0.5;
+    const coreSpan = Math.max(maxX - minX, maxY - minY);
 
-    // Arrowhead at spiral tail if annotations on
-    if (annotations && transformedSpiral.length >= 2) {
-      const tip = transformedSpiral[transformedSpiral.length - 1];
-      const prev = transformedSpiral[transformedSpiral.length - 2];
-      const angle = Math.atan2(tip.y - prev.y, tip.x - prev.x);
-      scene.addArrow(tip.x, tip.y, angle, 8, { filled: false, role: 'arrows' });
+    // Oversized outer circle (bleedBounds) sweeping past the frame edge
+    const bleedR = coreSpan * 0.88;
+    const bleedOffsetAng = prng.range(0, Math.PI * 2);
+    const bleedCx = coreCx + bleedR * 0.25 * Math.cos(bleedOffsetAng);
+    const bleedCy = coreCy + bleedR * 0.25 * Math.sin(bleedOffsetAng);
+    emitCircle(bleedCx, bleedCy, bleedR, { role: 'secondary', strokeWidthOverride: 0.9, zPriority: 2 });
+
+    for (let i = 0; i < circles.length; i++) {
+      const ci = circles[i];
+      const isAccent = (i === 1);
+      emitCircle(ci.x, ci.y, ci.r, {
+        role: isAccent ? 'accent' : 'primary',
+        zPriority: isAccent ? 8 : 5
+      });
     }
-  }
 
-  // Construction lines / rotated squares (guides)
-  if (annotations || prng.boolean(0.4)) {
-    for (let i = 0; i < Math.min(centers.length - 1, 5); i++) {
-      const c1 = centers[i];
-      const c2 = centers[i + 1];
-      const side = radii[i] * 1.4;
-      const angle = Math.atan2(c2.y - c1.y, c2.x - c1.x);
+    // Crisp nodes at exact tangency points (zero straight lines)
+    for (const tp of touchPoints) {
+      const p = transformPt(tp);
+      scene.addDot(p.x, p.y, 2.8, { filled: true, role: 'node' });
+    }
 
-      const half = side / 2;
-      const squarePts = [
-        { x: -half, y: -half },
-        { x: half, y: -half },
-        { x: half, y: half },
-        { x: -half, y: half }
-      ].map(p => {
-        const rot = Vec2.rotate(p, angle);
-        return transformPt({ x: c1.x + rot.x, y: c1.y + rot.y });
+    scene.setBounds(
+      { minX, minY, maxX, maxY },
+      {
+        minX: Math.min(minX, bleedCx - bleedR),
+        minY: Math.min(minY, bleedCy - bleedR),
+        maxX: Math.max(maxX, bleedCx + bleedR),
+        maxY: Math.max(maxY, bleedCy + bleedR)
+      }
+    );
+  } else {
+    // golden_construction: Full-scale whirling square / golden construction
+    const depth = Math.round(7 + complexity * 7); // 7 to 14 nested frames
+    const alpha = prng.range(0.10, 0.28);
+    const scaleStep = 1 / (Math.cos(alpha) + Math.sin(alpha));
+    const initialHalf = 220;
+    const baseRot = prng.range(0, Math.PI * 0.5);
+
+    const enclosingR = initialHalf * Math.SQRT2;
+    emitCircle(0, 0, enclosingR, { role: 'secondary', strokeWidthOverride: 0.8, zPriority: 2 });
+
+    // Clean diagonal construction rays extending to the enclosing circle
+    for (let c = 0; c < 4; c++) {
+      const ang = baseRot + Math.PI * 0.25 + c * Math.PI * 0.5;
+      const p1 = transformPt({ x: 0, y: 0 });
+      const p2 = transformPt({ x: enclosingR * Math.cos(ang), y: enclosingR * Math.sin(ang) });
+      scene.addPath([p1, p2], { role: 'guide', isPolygonal: true, zPriority: 1 });
+    }
+
+    let currentHalf = initialHalf;
+    let currentRot = baseRot;
+
+    for (let i = 0; i < depth; i++) {
+      if (currentHalf < 6) break;
+      const corners = [
+        { x: -currentHalf, y: -currentHalf },
+        { x: currentHalf, y: -currentHalf },
+        { x: currentHalf, y: currentHalf },
+        { x: -currentHalf, y: currentHalf }
+      ].map(p => transformPt(Vec2.rotate(p, currentRot)));
+
+      scene.addPath(corners, {
+        role: i % 2 === 1 ? 'guide' : 'primary',
+        isClosed: true,
+        isPolygonal: true,
+        zPriority: i % 2 === 1 ? 2 : 5
       });
 
-      // Add as guide polygon
-      for (let s = 0; s < 4; s++) {
-        scene.addPath([squarePts[s], squarePts[(s + 1) % 4]], {
-          role: 'guides',
-          isClosed: false,
-          allowOvershoot: true,
-          seed: prng.rangeInt(0, 1000000)
+      // Inscribed quarter-circle arc inside the square corner
+      const cornerIdx = i % 4;
+      const pivotLocal = [
+        { x: -currentHalf, y: -currentHalf },
+        { x: currentHalf, y: -currentHalf },
+        { x: currentHalf, y: currentHalf },
+        { x: -currentHalf, y: currentHalf }
+      ][cornerIdx];
+      const pivot = Vec2.rotate(pivotLocal, currentRot);
+      const arcStart = currentRot + cornerIdx * (Math.PI * 0.5);
+      const isAccent = (i === 0);
+
+      if (!depthTilt) {
+        scene.addArc(pivot.x, pivot.y, currentHalf * 2, currentHalf * 2, arcStart, arcStart + Math.PI * 0.5, 0, {
+          role: isAccent ? 'accent' : 'primary',
+          zPriority: isAccent ? 8 : 6
         });
+      } else {
+        const arcPts = sampleArc(pivot.x, pivot.y, currentHalf * 2, arcStart, arcStart + Math.PI * 0.5, 32).map(transformPt);
+        scene.addPath(arcPts, { role: isAccent ? 'accent' : 'primary', zPriority: isAccent ? 8 : 6 });
       }
+
+      currentHalf *= scaleStep;
+      currentRot += alpha;
     }
+
+    scene.setBounds({ minX: -enclosingR, minY: -enclosingR, maxX: enclosingR, maxY: enclosingR });
   }
 
-  scene.enforceAtomHint(prng);
+  if (annotations) {
+    const b = scene.coreBounds;
+    scene.addPath([transformPt({ x: b.minX, y: 0 }), transformPt({ x: b.maxX, y: 0 })], {
+      role: 'annotation',
+      isPolygonal: true,
+      zPriority: 1
+    });
+  }
+
   return scene;
 }

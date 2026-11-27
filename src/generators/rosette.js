@@ -1,209 +1,202 @@
 /**
- * Generator 1: Rosettes and Circle Lattices
- * Overlapping equal circles on a hex, square, or ring lattice,
- * optionally inside a boundary circle, or nested circles tangent inside it.
+ * Generator 1: Rosettes and Circle Lattices (Phase 1 Analytic)
+ * Sub-modes:
+ * - tangent_rings: Exact non-overlapping tangent circle rings r = R_ring * sin(pi/N)
+ *   with deterministic vertex nodes / concave stars at 100% or alternating 50% of cusps.
+ * - seed_of_life: 3x3 overlapping circle lattice (4-fold orthogonal <-> 6-fold hexagonal via Symmetry)
+ *   with uniform intersection dots and one highlighted crescent arc.
  */
 
 import { Scene } from '../scene.js';
-import { sampleArc, sampleEllipse, applyPlaneTilt, Vec2 } from '../math.js';
+import { sampleArc, applyPlaneTilt, Vec2 } from '../math.js';
 
-export function generateRosette(prng, controls) {
+export function circleIntersections(c1, c2) {
+  const dx = c2.x - c1.x;
+  const dy = c2.y - c1.y;
+  const d = Math.hypot(dx, dy);
+  const eps = 1e-4;
+  if (d < eps || d > c1.r + c2.r + eps || d < Math.abs(c1.r - c2.r) - eps) return [];
+  const a = (c1.r * c1.r - c2.r * c2.r + d * d) / (2 * d);
+  const h = Math.sqrt(Math.max(0, c1.r * c1.r - a * a));
+  const px = c1.x + (a * dx) / d;
+  const py = c1.y + (a * dy) / d;
+  if (h < 1e-3) return [{ x: px, y: py }];
+  const rx = (-dy * h) / d;
+  const ry = (dx * h) / d;
+  return [{ x: px + rx, y: py + ry }, { x: px - rx, y: py - ry }];
+}
+
+export function normalizeRosetteSubMode(subMode) {
+  if (subMode === 'seed_of_life') return 'seed_of_life';
+  return 'tangent_rings';
+}
+
+export function generateRosette(prng, controls = {}) {
   const scene = new Scene();
-  scene.hasLatticeNodes = true;
+  const {
+    complexity = 0.5,
+    symmetry = 0.75,
+    focus = 0.5,
+    depthTilt = false,
+    annotations = false,
+    subMode
+  } = controls;
 
-  const { complexity = 0.5, symmetry = 0.5, focus = 0.5, depthTilt = false, annotations = false } = controls;
+  const mode = normalizeRosetteSubMode(subMode);
+  const maxR = 240;
 
-  const canvasCenter = { x: 500, y: 500 };
-  const maxRadius = 420 * (0.45 + 0.55 * complexity); // 45% to 100% of available radius
-  const latticeTypes = ['ring', 'hex', 'square', 'nested_tangent'];
-  const latticeType = prng.choice(latticeTypes);
-
-  // Ring / count calculation scaled by complexity
-  const count = Math.round(3 + complexity * 9); // 3 to 12
-  const radiusShare = prng.range(0.55, 0.95);
-  const boundaryOn = prng.boolean(0.65);
-  const useStarNodes = prng.boolean(0.4);
-  const centerGlow = prng.boolean(0.85);
-
-  // Tilt parameters
   const tiltAngle = prng.range(0, Math.PI);
-  const squash = prng.range(0.45, 0.85);
-  const shear = prng.range(-0.15, 0.15);
+  const squash = prng.range(0.58, 0.85);
+  const shear = prng.range(-0.10, 0.10);
+  const transformPt = (pt) => depthTilt ? applyPlaneTilt(pt, tiltAngle, squash, shear, { x: 0, y: 0 }) : pt;
 
-  // Transform helper that applies tilt if depthTilt is on
-  function transformPt(pt) {
-    if (!depthTilt) return pt;
-    return applyPlaneTilt(pt, tiltAngle, squash, shear, canvasCenter);
-  }
-
-  function addCirclePath(cx, cy, r, role = 'structure', isAccent = false) {
-    const raw = sampleArc(cx, cy, r, 0, Math.PI * 2, 72);
-    const transformed = raw.map(transformPt);
-    scene.addPath(transformed, {
-      role,
-      isClosed: true,
-      isAccent,
-      seed: prng.rangeInt(0, 1000000)
-    });
-  }
-
-  const crossingPoints = [];
-
-  if (latticeType === 'ring') {
-    // Concentric rings of petal circles
-    const kFold = Math.round(3 + symmetry * 9); // rotational symmetry order
-    const numRings = Math.max(1, Math.round(1 + complexity * 4));
-
-    for (let ring = 1; ring <= numRings; ring++) {
-      const ringRadius = (ring / numRings) * (maxRadius * 0.7);
-      const circleR = (maxRadius / numRings) * radiusShare;
-      const petalsInRing = Math.round(kFold * ring);
-
-      for (let i = 0; i < petalsInRing; i++) {
-        let angle = (i / petalsInRing) * Math.PI * 2;
-        let rOffset = 0;
-
-        // Symmetry perturb
-        if (symmetry < 0.99) {
-          const jitterAmount = (1 - symmetry) * 0.35;
-          if (symmetry < 0.5 || prng.boolean(0.3)) {
-            angle += prng.range(-jitterAmount, jitterAmount) * (Math.PI / petalsInRing);
-            rOffset += prng.range(-jitterAmount, jitterAmount) * (ringRadius * 0.2);
-          }
-        }
-
-        // Focus pull
-        let cx = canvasCenter.x + (ringRadius + rOffset) * Math.cos(angle);
-        let cy = canvasCenter.y + (ringRadius + rOffset) * Math.sin(angle);
-        if (focus > 0.5) {
-          const pull = (focus - 0.5) * 0.4;
-          cx = Vec2.lerp({ x: cx, y: cy }, canvasCenter, pull).x;
-          cy = Vec2.lerp({ x: cx, y: cy }, canvasCenter, pull).y;
-        }
-
-        const isAccent = (ring === 1 && i === 0 && prng.boolean(0.5));
-        addCirclePath(cx, cy, circleR, isAccent ? 'accent' : 'structure', isAccent);
-
-        crossingPoints.push({ x: cx, y: cy });
-      }
-    }
-  } else if (latticeType === 'hex') {
-    // Hexagonal packing lattice
-    const spacing = 70 - complexity * 35; // 35 to 70
-    const circleR = spacing * radiusShare;
-    const gridLimit = Math.ceil(maxRadius / spacing);
-
-    for (let q = -gridLimit; q <= gridLimit; q++) {
-      for (let r = -gridLimit; r <= gridLimit; r++) {
-        const x = canvasCenter.x + spacing * (Math.sqrt(3) * q + (Math.sqrt(3) / 2) * r);
-        const y = canvasCenter.y + spacing * (1.5 * r);
-        const d = Vec2.dist({ x, y }, canvasCenter);
-
-        if (d <= maxRadius) {
-          let cx = x;
-          let cy = y;
-          if (symmetry < 0.8) {
-            const jitter = (1 - symmetry) * 0.35 * spacing;
-            cx += prng.range(-jitter, jitter);
-            cy += prng.range(-jitter, jitter);
-          }
-          addCirclePath(cx, cy, circleR);
-          if (prng.boolean(0.25)) crossingPoints.push({ x: cx, y: cy });
-        }
-      }
-    }
-  } else if (latticeType === 'square') {
-    // Square grid lattice
-    const spacing = 80 - complexity * 40;
-    const circleR = spacing * radiusShare;
-    const gridLimit = Math.ceil(maxRadius / spacing);
-
-    for (let ix = -gridLimit; ix <= gridLimit; ix++) {
-      for (let iy = -gridLimit; iy <= gridLimit; iy++) {
-        const x = canvasCenter.x + ix * spacing;
-        const y = canvasCenter.y + iy * spacing;
-        const d = Vec2.dist({ x, y }, canvasCenter);
-
-        if (d <= maxRadius) {
-          let cx = x;
-          let cy = y;
-          if (symmetry < 0.8) {
-            const jitter = (1 - symmetry) * 0.35 * spacing;
-            cx += prng.range(-jitter, jitter);
-            cy += prng.range(-jitter, jitter);
-          }
-          addCirclePath(cx, cy, circleR);
-          if (prng.boolean(0.2)) crossingPoints.push({ x: cx, y: cy });
-        }
-      }
-    }
-  } else {
-    // Nested circles tangent inside boundary
-    const numCircles = Math.round(4 + complexity * 10);
-    for (let i = 0; i < numCircles; i++) {
-      const frac = (i + 1) / numCircles;
-      const r = (maxRadius * frac) / 2;
-      const cx = canvasCenter.x;
-      const cy = canvasCenter.y + maxRadius / 2 - r;
-      addCirclePath(cx, cy, r, i === numCircles - 1 ? 'accent' : 'structure');
-      crossingPoints.push({ x: cx, y: canvasCenter.y + maxRadius / 2 });
-    }
-  }
-
-  // Outer boundary circle
-  if (boundaryOn) {
-    addCirclePath(canvasCenter.x, canvasCenter.y, maxRadius, 'structure', false);
-  }
-
-  // Crossing nodes / star marks
-  const sampleCrossings = crossingPoints.filter(() => prng.boolean(0.5)).slice(0, 24);
-  for (const pt of sampleCrossings) {
-    const tPt = transformPt(pt);
-    if (useStarNodes) {
-      scene.addStarNode(tPt.x, tPt.y, prng.range(4, 7), 4, { role: 'nodes' });
+  const emitCircle = (cx, cy, r, opts = {}) => {
+    if (r < 2) return;
+    if (!depthTilt) {
+      scene.addCircle(cx, cy, r, opts);
     } else {
-      scene.addDot(tPt.x, tPt.y, prng.range(2, 3.5), { filled: prng.boolean(0.8), role: 'nodes' });
+      const pts = sampleArc(cx, cy, r, 0, Math.PI * 2, 72).map(transformPt);
+      scene.addPath(pts, { ...opts, isClosed: true });
     }
+  };
+
+  if (mode === 'seed_of_life') {
+    const useHex = symmetry >= 0.5;
+    const cellR = maxR * (0.42 - 0.08 * complexity);
+    const spacing = cellR * (useHex ? 1.0 : 1.05);
+    const circles = [];
+
+    if (useHex) {
+      // 6-fold Flower / Seed of Life (center + 1 or 2 rings)
+      circles.push({ x: 0, y: 0, r: cellR, isAccent: false });
+      const ringCount = complexity > 0.6 ? 2 : 1;
+      for (let ring = 1; ring <= ringCount; ring++) {
+        const count = 6 * ring;
+        for (let i = 0; i < count; i++) {
+          const ang = (i / count) * Math.PI * 2;
+          const dist = ring === 1 ? spacing : (i % 2 === 0 ? spacing * 2 : spacing * Math.sqrt(3));
+          circles.push({ x: dist * Math.cos(ang), y: dist * Math.sin(ang), r: cellR });
+        }
+      }
+    } else {
+      // 3x3 orthogonal overlapping circle lattice (4-fold)
+      for (let gx = -1; gx <= 1; gx++) {
+        for (let gy = -1; gy <= 1; gy++) {
+          circles.push({ x: gx * spacing, y: gy * spacing, r: cellR });
+        }
+      }
+    }
+
+    for (const c of circles) {
+      emitCircle(c.x, c.y, c.r, { role: 'primary', zPriority: 5 });
+    }
+
+    // Subtle highlighted crescent arc on outer boundary
+    const outerR = useHex ? (complexity > 0.6 ? spacing * 2 + cellR : spacing + cellR) : spacing * Math.SQRT2 + cellR * 0.65;
+    emitCircle(0, 0, outerR, { role: 'secondary', zPriority: 3 });
+
+    const crescentStart = prng.range(0, Math.PI * 2);
+    if (!depthTilt) {
+      scene.addArc(0, 0, outerR, outerR, crescentStart, crescentStart + Math.PI * 0.65, 0, {
+        role: 'accent',
+        zPriority: 8
+      });
+    } else {
+      const arcPts = sampleArc(0, 0, outerR, crescentStart, crescentStart + Math.PI * 0.65, 48).map(transformPt);
+      scene.addPath(arcPts, { role: 'accent', zPriority: 8 });
+    }
+
+    // Uniform deterministic intersection dots
+    const intersections = [];
+    for (let i = 0; i < circles.length; i++) {
+      for (let j = i + 1; j < circles.length; j++) {
+        const hits = circleIntersections(circles[i], circles[j]);
+        for (const h of hits) {
+          if (!intersections.some(u => Vec2.dist(u, h) < 4)) {
+            intersections.push(h);
+          }
+        }
+      }
+    }
+    const stride = intersections.length > 28 ? 2 : 1;
+    for (let i = 0; i < intersections.length; i += stride) {
+      const tp = transformPt(intersections[i]);
+      scene.addDot(tp.x, tp.y, 2.2, { filled: true, role: 'node' });
+    }
+
+    const centerPt = transformPt({ x: 0, y: 0 });
+    scene.addDot(centerPt.x, centerPt.y, 3.2, { filled: true, role: 'node', isGlow: true });
+
+    const bound = outerR * 1.04;
+    scene.setBounds({ minX: -bound, minY: -bound, maxX: bound, maxY: bound });
+  } else {
+    // tangent_rings: Exact non-overlapping tangency r = R_ring * sin(pi/N)
+    const rings = Math.max(1, Math.round(1 + complexity * 2));
+    const baseN = Math.round(6 + symmetry * 10); // 6 to 16
+    const rotOffset = prng.range(0, Math.PI * 2);
+    const useStars = prng.boolean(0.5);
+    const alternatingCusps = symmetry < 0.65;
+
+    // Outer boundary ring
+    emitCircle(0, 0, maxR, { role: 'accent', zPriority: 8 });
+
+    let currentR = maxR;
+    for (let ringIdx = 0; ringIdx < rings; ringIdx++) {
+      if (currentR < 32) break;
+      const N = Math.max(5, baseN - ringIdx * 2);
+      const sinHalf = Math.sin(Math.PI / N);
+      // Exact mutual tangency inside currentR: r = R * sin(pi/N) / (1 + sin(pi/N))
+      const r = (currentR * sinHalf) / (1 + sinHalf);
+      const R_ring = currentR - r;
+
+      for (let i = 0; i < N; i++) {
+        const ang = rotOffset + (i / N) * Math.PI * 2;
+        const cx = R_ring * Math.cos(ang);
+        const cy = R_ring * Math.sin(ang);
+        emitCircle(cx, cy, r, { role: 'primary', zPriority: 5 });
+
+        // Deterministic vertex nodes at 100% (or alternating 50%) of tangent cusps
+        const cuspAng = ang + Math.PI / N;
+        if (!alternatingCusps || i % 2 === 0) {
+          const cuspDist = Math.sqrt(Math.max(0, R_ring * R_ring - r * r));
+          const cuspPt = transformPt({
+            x: cuspDist * Math.cos(cuspAng),
+            y: cuspDist * Math.sin(cuspAng)
+          });
+          if (useStars && i % 2 === 0) {
+            scene.addStarNode(cuspPt.x, cuspPt.y, 4.5, 4, { role: 'node' });
+          } else {
+            scene.addDot(cuspPt.x, cuspPt.y, 2.2, { filled: true, role: 'node' });
+          }
+        }
+      }
+
+      const innerBoundary = currentR - 2 * r;
+      if (innerBoundary > 18) {
+        emitCircle(0, 0, innerBoundary, { role: 'secondary', zPriority: 3 });
+      }
+      currentR = innerBoundary * (0.94 - 0.08 * focus);
+    }
+
+    const centerPt = transformPt({ x: 0, y: 0 });
+    scene.addDot(centerPt.x, centerPt.y, 3.2, { filled: true, role: 'node', isGlow: true });
+    scene.setBounds({ minX: -maxR, minY: -maxR, maxX: maxR, maxY: maxR });
   }
 
-  // Center glow dot
-  if (centerGlow) {
-    const centerPt = transformPt(canvasCenter);
-    scene.addDot(centerPt.x, centerPt.y, prng.range(3.5, 5), {
-      filled: true,
-      role: 'nodes',
-      isGlow: true
-    });
-    scene.hasNucleusOrCenterDot = true;
-  }
-
-  // Annotation artifacts
   if (annotations) {
-    // Dashed guide circle
-    const guidePts = sampleArc(canvasCenter.x, canvasCenter.y, maxRadius * 1.08, 0, Math.PI * 2, 60).map(transformPt);
-    scene.addPath(guidePts, { role: 'guides', isClosed: true, allowBreak: false });
-
-    // Center axes with tick marks
-    const axisLen = maxRadius * 0.9;
-    const pX1 = transformPt({ x: canvasCenter.x - axisLen, y: canvasCenter.y });
-    const pX2 = transformPt({ x: canvasCenter.x + axisLen, y: canvasCenter.y });
-    const pY1 = transformPt({ x: canvasCenter.x, y: canvasCenter.y - axisLen });
-    const pY2 = transformPt({ x: canvasCenter.x, y: canvasCenter.y + axisLen });
-
-    scene.addPath([pX1, pX2], { role: 'guides', allowOvershoot: false });
-    scene.addPath([pY1, pY2], { role: 'guides', allowOvershoot: false });
-
-    // Ticks along axes
-    const tickCount = 6;
-    for (let t = 1; t <= tickCount; t++) {
-      const frac = t / (tickCount + 1);
-      const tx = canvasCenter.x - axisLen + frac * 2 * axisLen;
-      const t1 = transformPt({ x: tx, y: canvasCenter.y - 4 });
-      const t2 = transformPt({ x: tx, y: canvasCenter.y + 4 });
-      scene.addTick(t1.x, t1.y, t2.x, t2.y, { role: 'guides' });
-    }
+    const guideR = maxR * 1.08;
+    emitCircle(0, 0, guideR, { role: 'annotation', zPriority: 1 });
+    scene.addPath([transformPt({ x: -guideR, y: 0 }), transformPt({ x: guideR, y: 0 })], {
+      role: 'annotation',
+      isPolygonal: true,
+      zPriority: 1
+    });
+    scene.addPath([transformPt({ x: 0, y: -guideR }), transformPt({ x: 0, y: guideR })], {
+      role: 'annotation',
+      isPolygonal: true,
+      zPriority: 1
+    });
   }
 
-  scene.enforceAtomHint(prng);
   return scene;
 }

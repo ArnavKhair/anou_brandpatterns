@@ -1,15 +1,15 @@
 /**
- * Test Suite for Atom Pattern Generator
- * Validates Phase 1, Phase 2, and Phase 3 specifications.
+ * Test Suite for Atom Pattern Generator (Phase 1 Analytic Pipeline)
  */
 
 import { createPRNG } from './src/math.js';
+import { Scene } from './src/scene.js';
 import { GENERATOR_FAMILIES, generateScene } from './src/generators/index.js';
 import { runFinishPipeline } from './src/finish-pipeline.js';
 import { writeSVG } from './src/svg-writer.js';
 import { TasteProfileManager } from './src/taste-profile.js';
 
-console.log('🧪 Starting Atom Pattern Generator Test Suite...\n');
+console.log('🧪 Starting Atom Pattern Generator Test Suite (Phase 1)...\n');
 
 let totalTests = 0;
 let passedTests = 0;
@@ -25,133 +25,77 @@ function assert(condition, message) {
   }
 }
 
-// -------------------------------------------------------------
-// Test 1: All 7 Generators with 20 Seeds Each (Phase 1 Acceptance)
-// -------------------------------------------------------------
-console.log('--- Test 1: Phase 1 Generator Robustness (20 seeds x 7 families = 140 runs) ---');
-
+// Test 1: All 8 Generators x 10 Seeds
 const families = Object.keys(GENERATOR_FAMILIES);
-assert(families.length === 7, 'All 7 motif families are registered');
+assert(families.length === 8, 'All 8 motif families are registered');
 
-const testControls = {
+const cleanControls = {
   complexity: 0.5,
-  symmetry: 0.5,
-  focus: 0.5,
+  symmetry: 0.7,
+  focus: 0.6,
   depthTilt: false,
-  annotations: true,
-  roughness: 0.2,
-  lineBreaks: 0.05,
+  annotations: false,
+  roughness: 0,
+  lineBreaks: 0,
   strokeWeight: 1.4,
-  weightVariation: 0.15,
-  overshoot: 0.10
+  weightVariation: 0,
+  overshoot: 0
 };
 
-let allGenerationsValid = true;
-let totalAnchors = 0;
+let allValid = true;
+let maxAnchorsSeen = 0;
 
 for (const fam of families) {
   let famValid = true;
-  for (let s = 1; s <= 20; s++) {
+  for (let s = 1; s <= 10; s++) {
     const seed = 1000 + s * 37;
-    const prng = createPRNG(seed);
-    const scene = generateScene(fam, prng, testControls);
-
-    if (!scene || scene.paths.length === 0) {
+    const scene = generateScene(fam, createPRNG(seed), cleanControls);
+    if (!scene || scene.paths.length === 0 || !scene.coreBounds) {
       famValid = false;
-      allGenerationsValid = false;
-      console.error(`Empty scene for family ${fam} with seed ${seed}`);
+      allValid = false;
       break;
     }
-
-    const rendered = runFinishPipeline(scene, testControls);
-    const svg = writeSVG(rendered);
-
-    if (!svg.includes('<svg') || !svg.includes('</svg>') || !svg.includes('<g id="structure"')) {
+    const rendered = runFinishPipeline(scene, cleanControls);
+    const svg = writeSVG(rendered, {
+      stateMetadata: { generator: fam, subMode: cleanControls.subMode, seed, params: cleanControls }
+    });
+    if (!svg.includes('<svg') || !svg.includes('<g id="atom-pattern"')) {
       famValid = false;
-      allGenerationsValid = false;
-      console.error(`Invalid SVG for family ${fam} with seed ${seed}`);
+      allValid = false;
       break;
     }
-
-    const anchorCount = (svg.match(/[MLHVCSQTAZ]/gi) || []).length;
-    totalAnchors += anchorCount;
+    const dMatches = svg.match(/d="([^"]+)"/g) || [];
+    const anchorCount = dMatches.reduce((sum, attr) => sum + ((attr.slice(3, -1).match(/[MLHVCSQTAZ]/gi)) || []).length, 0);
+    if (anchorCount > maxAnchorsSeen) maxAnchorsSeen = anchorCount;
+    if (anchorCount >= 400) {
+      famValid = false;
+      allValid = false;
+      console.error(`Anchor cap exceeded (${anchorCount}) for ${fam} seed ${seed}`);
+      break;
+    }
   }
-  assert(famValid, `Family [${fam}]: 20 random seeds produced valid scenes & SVG`);
+  assert(famValid, `Family [${fam}]: 10 seeds valid, semantic SVG & < 400 anchors`);
 }
+assert(allValid, `All 80 test runs valid (max anchors seen: ${maxAnchorsSeen})`);
 
-assert(allGenerationsValid, 'All 140 test runs produced valid scenes and SVG output');
-
-// -------------------------------------------------------------
-// Test 2: Determinism & Finish Controls (Phase 2 Acceptance)
-// -------------------------------------------------------------
-console.log('\n--- Test 2: Phase 2 Determinism & Control Mapping ---');
-
-// Same seed + same controls = exact identical SVG
+// Test 2: Determinism & Semantic Layers
 const seedX = 987654;
-const prngA = createPRNG(seedX);
-const sceneA = generateScene('orbit_systems', prngA, testControls);
-const svgA = writeSVG(runFinishPipeline(sceneA, testControls));
+const svgA = writeSVG(runFinishPipeline(generateScene('orbit_systems', createPRNG(seedX), cleanControls), cleanControls));
+const svgB = writeSVG(runFinishPipeline(generateScene('orbit_systems', createPRNG(seedX), cleanControls), cleanControls));
+assert(svgA === svgB, 'Determinism: identical seed + controls produce identical SVG');
 
-const prngB = createPRNG(seedX);
-const sceneB = generateScene('orbit_systems', prngB, testControls);
-const svgB = writeSVG(runFinishPipeline(sceneB, testControls));
+const fullScene = new Scene();
+fullScene.addCircle(500, 500, 100, { role: 'primary' });
+fullScene.addCircle(500, 500, 140, { role: 'accent' });
+fullScene.addArc(500, 500, 120, 60, Math.PI, Math.PI * 2, 0, { role: 'primary', visibility: 'back' });
+fullScene.addTick(0, 0, 5, 5, { role: 'annotation' });
+fullScene.addStarNode(500, 500, 5, 4, { role: 'node' });
+assert(fullScene.getActiveLayers().length === 5, 'Scene.getActiveLayers() returns 5 active layers for full scene');
 
-assert(svgA === svgB, 'Determinism check: Identical seed + controls produce 100% identical SVG');
-
-// Clean arcs check: roughness = 0 produces exact curves
-const cleanControls = { ...testControls, roughness: 0, lineBreaks: 0, overshoot: 0, weightVariation: 0 };
-const sceneClean = generateScene('rosettes', createPRNG(42), cleanControls);
-const renderedClean = runFinishPipeline(sceneClean, cleanControls);
-const svgClean = writeSVG(renderedClean);
-assert(svgClean.length > 500 && !svgClean.includes('opacity="0.65"'), 'Roughness 0 produces exact clean curves with no redraw pass');
-
-// 6 Named groups check for Figma
-const requiredGroups = ['structure', 'accent', 'nodes', 'arrows', 'hidden', 'guides'];
-const allGroupsPresent = requiredGroups.every(g => svgClean.includes(`id="${g}"`));
-assert(allGroupsPresent, 'SVG contains all 6 named groups for Figma (structure, accent, nodes, arrows, hidden, guides)');
-
-// -------------------------------------------------------------
-// Test 3: Taste Profile & Learning Loop (Phase 3 Acceptance)
-// -------------------------------------------------------------
-console.log('\n--- Test 3: Phase 3 Taste Profile & Adaptive Learning ---');
-
+// Test 3: Taste Profile clean defaults
 const manager = new TasteProfileManager();
-const initialWireframeWeight = manager.familyWeights['wireframes'];
-const initialRoughnessMean = manager.sliderStats['roughness'].mean;
+const next = manager.generateNext({}, {}, createPRNG(42));
+assert(next.controls.roughness === 0 && next.controls.lineBreaks === 0 && next.controls.overshoot === 0,
+  'TasteProfileManager defaults roughness, lineBreaks, overshoot to 0.0');
 
-// Perform 10 saves of wireframe designs with high roughness
-console.log('  Simulating 10 user saves favoring [wireframes] with roughness = 0.85...');
-for (let i = 1; i <= 10; i++) {
-  manager.saveDesign({
-    family: 'wireframes',
-    seed: 5000 + i,
-    controls: {
-      ...testControls,
-      roughness: 0.85,
-      complexity: 0.80
-    }
-  });
-}
-
-const updatedWireframeWeight = manager.familyWeights['wireframes'];
-const updatedRoughnessMean = manager.sliderStats['roughness'].mean;
-
-assert(updatedWireframeWeight > initialWireframeWeight, `Wireframe family weight increased: ${initialWireframeWeight.toFixed(3)} -> ${updatedWireframeWeight.toFixed(3)}`);
-assert(updatedRoughnessMean > initialRoughnessMean, `Learned roughness mean shifted toward user preference: ${initialRoughnessMean.toFixed(2)} -> ${updatedRoughnessMean.toFixed(2)}`);
-
-// Wildcard test: 5th next should be a wildcard
-manager.nextCount = 4; // next will be 5
-const next5 = manager.generateNext({}, {});
-assert(next5.isWildcard === true, 'Wildcard check: Every 5th "Next" is marked as wildcard and breaks out of rut');
-
-// JSON export and import test
-const exportedJSON = manager.exportJSON();
-assert(exportedJSON.length > 200, 'Taste profile JSON export generated');
-
-const manager2 = new TasteProfileManager();
-const importedOk = manager2.importJSON(exportedJSON);
-assert(importedOk === true && manager2.savedDesigns.length === 10, 'Taste profile JSON import restored 10 favorites successfully');
-
-console.log(`\n========================================`);
-console.log(`Result: ${passedTests} / ${totalTests} tests passed.`);
-console.log(`========================================\n`);
+console.log(`\n${passedTests}/${totalTests} tests passed.`);

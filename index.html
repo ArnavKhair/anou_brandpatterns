@@ -13,16 +13,25 @@
       <div class="brand">
         <span class="brand-glyph">⚛</span>
         <h1>Atom Pattern Generator</h1>
-        <span class="badge prototype-badge">Prototype</span>
+        <span class="badge prototype-badge">Analytic IR</span>
       </div>
 
       <div class="header-actions">
-        <button id="theme-toggle-btn" class="btn btn-secondary">☀️ Light</button>
+        <div class="segmented-group" id="theme-pills" title="Preview Background">
+          <button class="seg-btn active" data-theme="dark">Dark</button>
+          <button class="seg-btn" data-theme="light">Light</button>
+          <button class="seg-btn" data-theme="transparent">Grid</button>
+        </div>
+        <button id="overlay-toggle-btn" class="btn btn-secondary" title="Toggle non-exporting Safe-Margin & Crosshair overlay">⌖ Guides</button>
         <button id="toggle-profile-btn" class="btn btn-secondary">📊 Taste Profile</button>
         <div class="divider-v"></div>
+        <label class="export-toggle" title="Toggle vector-effect='non-scaling-stroke' on exported SVG">
+          <input type="checkbox" id="non-scaling-check">
+          <span>Non-scaling</span>
+        </label>
         <button id="copy-svg-btn" class="btn btn-secondary" title="Copy raw SVG markup for Figma (C)">📋 Copy SVG</button>
         <button id="download-svg-btn" class="btn btn-secondary" title="Download .svg file">💾 Download SVG</button>
-        <button id="save-btn" class="btn btn-primary" title="Save pattern and update taste profile (S)">★ Save Design</button>
+        <button id="save-btn" class="btn btn-primary" title="Pin pattern & update taste profile (S)">★ Pin Design</button>
       </div>
     </header>
 
@@ -30,11 +39,30 @@
     <div class="workspace">
       <!-- Left / Canvas Area -->
       <main class="canvas-panel">
-        <!-- Pattern Info Subheader -->
+        <!-- Pattern Info & Archetype Subheader -->
         <div class="canvas-meta-bar">
           <div class="meta-left">
-            <span id="family-badge" class="badge family-badge">Rosettes</span>
+            <div class="inline-select-lock">
+              <select id="family-select" class="meta-select" title="Select generator archetype"></select>
+              <button class="lock-btn" id="family-lock-btn" data-control="family" title="Lock archetype">🔒</button>
+            </div>
+
+            <div class="inline-select-lock" id="submode-wrap">
+              <div id="submode-pills" class="segmented-group"></div>
+              <button class="lock-btn" data-control="subMode" title="Lock sub-archetype">🔒</button>
+            </div>
+
+            <div class="inline-select-lock">
+              <div id="framing-pills" class="segmented-group">
+                <button class="seg-btn active" data-framing="CENTERED EMBLEM">Centered</button>
+                <button class="seg-btn" data-framing="OFF-AXIS FOCAL">Off-Axis</button>
+              </div>
+              <button class="lock-btn" data-control="framingPreset" title="Lock framing mode">🔒</button>
+            </div>
+
             <span id="seed-badge" class="badge seed-badge">#123456</span>
+            <span id="layer-count-badge" class="badge layer-badge">3 Layers</span>
+            <span id="mood-badge" class="badge mood-badge" title="Active stylistic mood profile">Stark Minimal</span>
             <span id="wildcard-badge" class="badge wildcard-badge hidden">✨ Wildcard</span>
           </div>
 
@@ -45,26 +73,34 @@
           </div>
         </div>
 
-        <!-- Canvas Viewport -->
-        <div class="canvas-viewport">
+        <!-- Canvas Viewport (supports SVG drop to restore state) -->
+        <div id="canvas-viewport" class="canvas-viewport" title="Drop any exported Atom SVG here to restore its state">
           <div id="canvas-container" class="canvas-container"></div>
+          <svg id="safe-margin-overlay" class="safe-margin-overlay hidden" viewBox="0 0 1000 1000" aria-hidden="true">
+            <rect x="130" y="130" width="740" height="740" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="6 6" opacity="0.45" />
+            <line x1="500" y1="0" x2="500" y2="1000" stroke="currentColor" stroke-width="0.75" stroke-dasharray="4 6" opacity="0.3" />
+            <line x1="0" y1="500" x2="1000" y2="500" stroke="currentColor" stroke-width="0.75" stroke-dasharray="4 6" opacity="0.3" />
+            <circle cx="500" cy="500" r="8" fill="none" stroke="currentColor" stroke-width="0.75" opacity="0.45" />
+          </svg>
         </div>
 
         <!-- Primary Flow Navigation Controls -->
         <nav class="canvas-nav-bar">
-          <button id="back-btn" class="btn btn-nav btn-back" title="Back to previous pattern (Left Arrow)" disabled>
-            ← Back
-          </button>
-          <div class="nav-hint">Press <strong>Space</strong> or click Next to explore</div>
-          <button id="next-btn" class="btn btn-nav btn-next" title="Next pattern from profile (Space / Right Arrow)">
-            Next Pattern →
-          </button>
+          <div class="nav-history-group">
+            <button id="back-btn" class="btn btn-nav btn-back" title="Back in history (Left Arrow)" disabled>← Back</button>
+            <button id="forward-btn" class="btn btn-nav btn-back" title="Forward in history" disabled>Forward →</button>
+          </div>
+          <div class="nav-hint">Press <strong>Space</strong> for Next · Drop exported <strong>.svg</strong> to restore</div>
+          <div class="nav-history-group">
+            <button id="pin-btn" class="btn btn-secondary" title="Quick pin to strip (S)">★ Pin</button>
+            <button id="next-btn" class="btn btn-nav btn-next" title="Next pattern from profile (Space / Right Arrow)">Next Pattern →</button>
+          </div>
         </nav>
 
-        <!-- Favorites Tray -->
+        <!-- Pin Strip / Saved Favorites Tray -->
         <section class="favorites-section">
           <div class="favorites-header">
-            <h3>Saved Favorites (<span id="favorites-count">0</span>)</h3>
+            <h3>Pinned Strip &amp; Favorites (<span id="favorites-count">0</span>)</h3>
             <div class="fav-tools">
               <button id="export-json-btn" class="btn-text">Export JSON</button>
               <button id="import-json-btn" class="btn-text">Import JSON</button>
@@ -72,7 +108,7 @@
             </div>
           </div>
           <div id="favorites-list" class="favorites-list">
-            <div class="empty-favs">No saved patterns yet. Press "Save Design" on one you like!</div>
+            <div class="empty-favs">No pinned patterns yet. Press "★ Pin" on one you like!</div>
           </div>
         </section>
       </main>
@@ -146,34 +182,8 @@
         <!-- Section: Finish Controls (Instant Restyling) -->
         <div class="control-group">
           <div class="group-header">
-            <h2>Finish & Draftsmanship</h2>
+            <h2>Stroke &amp; Weight</h2>
             <span class="group-sub">Instant restyling</span>
-          </div>
-
-          <!-- Rough to Clean -->
-          <div class="control-row">
-            <div class="control-label-wrap">
-              <label for="roughness-slider">Rough to Clean</label>
-              <div class="control-val-lock">
-                <span id="roughness-val" class="slider-val">0.20</span>
-                <button class="lock-btn" data-control="roughness" title="Lock slider value">🔒</button>
-              </div>
-            </div>
-            <input type="range" id="roughness-slider" min="0" max="1" step="0.01" value="0.20">
-            <div class="slider-scale"><span>Clean Arcs</span><span>Rough Pencil</span></div>
-          </div>
-
-          <!-- Line breaks -->
-          <div class="control-row">
-            <div class="control-label-wrap">
-              <label for="line-breaks-slider">Line Breaks</label>
-              <div class="control-val-lock">
-                <span id="line-breaks-val" class="slider-val">0.05</span>
-                <button class="lock-btn" data-control="lineBreaks" title="Lock slider value">🔒</button>
-              </div>
-            </div>
-            <input type="range" id="line-breaks-slider" min="0" max="1" step="0.01" value="0.05">
-            <div class="slider-scale"><span>Continuous</span><span>Broken Gaps</span></div>
           </div>
 
           <!-- Stroke Weight -->
@@ -194,27 +204,63 @@
             <div class="control-label-wrap">
               <label for="weight-variation-slider">Weight Variation</label>
               <div class="control-val-lock">
-                <span id="weight-variation-val" class="slider-val">0.15</span>
+                <span id="weight-variation-val" class="slider-val">0.00</span>
                 <button class="lock-btn" data-control="weightVariation" title="Lock slider value">🔒</button>
               </div>
             </div>
-            <input type="range" id="weight-variation-slider" min="0" max="1" step="0.01" value="0.15">
+            <input type="range" id="weight-variation-slider" min="0" max="1" step="0.01" value="0.00">
             <div class="slider-scale"><span>Uniform</span><span>Varied Chunks</span></div>
           </div>
-
-          <!-- Overshoot -->
-          <div class="control-row">
-            <div class="control-label-wrap">
-              <label for="overshoot-slider">Overshoot</label>
-              <div class="control-val-lock">
-                <span id="overshoot-val" class="slider-val">0.10</span>
-                <button class="lock-btn" data-control="overshoot" title="Lock slider value">🔒</button>
-              </div>
-            </div>
-            <input type="range" id="overshoot-slider" min="0" max="1" step="0.01" value="0.10">
-            <div class="slider-scale"><span>Exact Ends</span><span>Construction Lines</span></div>
-          </div>
         </div>
+
+        <!-- Collapsible Texture & Imperfection Drawer (Defaulted to 0.00) -->
+        <details class="control-group texture-accordion">
+          <summary class="accordion-summary">
+            <span>Texture &amp; Imperfection</span>
+            <span class="group-sub">Optional</span>
+          </summary>
+
+          <div class="accordion-body">
+            <!-- Rough to Clean -->
+            <div class="control-row">
+              <div class="control-label-wrap">
+                <label for="roughness-slider">Roughness</label>
+                <div class="control-val-lock">
+                  <span id="roughness-val" class="slider-val">0.00</span>
+                  <button class="lock-btn" data-control="roughness" title="Lock slider value">🔒</button>
+                </div>
+              </div>
+              <input type="range" id="roughness-slider" min="0" max="1" step="0.01" value="0.00">
+              <div class="slider-scale"><span>Clean Vector</span><span>Rough Pencil</span></div>
+            </div>
+
+            <!-- Line breaks -->
+            <div class="control-row">
+              <div class="control-label-wrap">
+                <label for="line-breaks-slider">Line Breaks</label>
+                <div class="control-val-lock">
+                  <span id="line-breaks-val" class="slider-val">0.00</span>
+                  <button class="lock-btn" data-control="lineBreaks" title="Lock slider value">🔒</button>
+                </div>
+              </div>
+              <input type="range" id="line-breaks-slider" min="0" max="1" step="0.01" value="0.00">
+              <div class="slider-scale"><span>Continuous</span><span>Broken Gaps</span></div>
+            </div>
+
+            <!-- Overshoot -->
+            <div class="control-row">
+              <div class="control-label-wrap">
+                <label for="overshoot-slider">Overshoot</label>
+                <div class="control-val-lock">
+                  <span id="overshoot-val" class="slider-val">0.00</span>
+                  <button class="lock-btn" data-control="overshoot" title="Lock slider value">🔒</button>
+                </div>
+              </div>
+              <input type="range" id="overshoot-slider" min="0" max="1" step="0.01" value="0.00">
+              <div class="slider-scale"><span>Exact Ends</span><span>Construction Lines</span></div>
+            </div>
+          </div>
+        </details>
       </aside>
     </div>
 
@@ -223,7 +269,7 @@
       <div class="profile-drawer-content">
         <div class="drawer-header">
           <h3>Learned Taste Profile</h3>
-          <p class="drawer-desc">Learns your preferences from saved designs and reference scores. No AI involved.</p>
+          <p class="drawer-desc">Learns your preferences from pinned designs and reference scores. No AI involved.</p>
         </div>
 
         <div class="profile-sections">
@@ -245,7 +291,7 @@
     </div>
 
     <!-- Notification Toast -->
-    <div id="toast" class="toast">Action performed</div>
+    <div id="toast" class="toast"></div>
   </div>
 
   <script type="module" src="src/app.js"></script>

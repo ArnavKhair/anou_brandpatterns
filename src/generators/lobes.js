@@ -1,159 +1,177 @@
 /**
- * Generator 3: Lobes and Envelopes
- * (a) Rose and figure-8 lobes from r = a*cos(k*theta) with k from 1 to 4, plus center dot;
- * (b) A stack of 6 to 40 ellipses rotated about one axis so they pinch into a bow-tie;
- * (c) A circle foreshortened into a stack of flatter ellipses sharing one baseline.
- * Atom hint: s, p, and d orbital shapes.
+ * Generator 3: Lobes and Envelopes (Phase 1 Analytic)
+ * Sub-modes:
+ * - bowtie_stack: 3D circle rotating around Y-axis with non-linear caustic density
+ *   u_i = sin^2((pi * i) / (2 * N)), N in [32, 64]
+ * - foreshortened_stack: Stack of flatter ellipses sharing one baseline with sin^2 caustic easing
+ * - rose: Multi-harmonic rose contours r(theta) = R + a*cos(k1*theta) + b*cos(k2*theta + phi)
  */
 
 import { Scene } from '../scene.js';
-import { sampleEllipse, applyPlaneTilt, Vec2 } from '../math.js';
+import { sampleEllipse, applyPlaneTilt } from '../math.js';
 
-export function generateLobes(prng, controls) {
+export function normalizeLobesSubMode(subMode) {
+  if (subMode === 'rose' || subMode === 'foreshortened_stack') return subMode;
+  return 'bowtie_stack';
+}
+
+export function generateLobes(prng, controls = {}) {
   const scene = new Scene();
-  scene.hasLobe = true;
+  const {
+    complexity = 0.5,
+    symmetry = 0.75,
+    focus = 0.5,
+    depthTilt = false,
+    annotations = false,
+    subMode
+  } = controls;
 
-  const { complexity = 0.5, symmetry = 0.5, focus = 0.5, depthTilt = false, annotations = false } = controls;
-  const canvasCenter = { x: 500, y: 500 };
+  const mode = normalizeLobesSubMode(subMode);
+  const maxR = 230;
 
   const tiltAngle = prng.range(0, Math.PI);
-  const squash = prng.range(0.45, 0.85);
-  const shear = prng.range(-0.15, 0.15);
+  const squash = prng.range(0.62, 0.85);
+  const shear = prng.range(-0.10, 0.10);
+  const transformPt = (pt) => depthTilt ? applyPlaneTilt(pt, tiltAngle, squash, shear, { x: 0, y: 0 }) : pt;
 
-  function transformPt(pt) {
-    if (!depthTilt) return pt;
-    return applyPlaneTilt(pt, tiltAngle, squash, shear, canvasCenter);
-  }
+  if (mode === 'bowtie_stack') {
+    const N = Math.round(32 + complexity * 32); // N in [32, 64]
+    const R = maxR * 0.92;
+    const rot2D = prng.range(-Math.PI * 0.25, Math.PI * 0.25);
+    const pruneStart = symmetry < 0.65 ? Math.floor(N * 0.18) : -1;
+    const pruneEnd = symmetry < 0.65 ? Math.floor(N * (0.18 + (0.65 - symmetry) * 0.35)) : -1;
+    const accentIdx = Math.floor(N * 0.25);
 
-  const subType = prng.choice(['rose', 'bowtie_stack', 'foreshortened_stack']);
-  const maxRadius = 380 * (0.55 + 0.45 * complexity);
+    for (let i = 0; i < N; i++) {
+      if (i >= pruneStart && i <= pruneEnd) continue;
+      // Optical caustic density: u_i = sin^2((pi * i) / (2 * N))
+      const u = Math.pow(Math.sin((Math.PI * i) / (2 * Math.max(1, N - 1))), 2);
+      const phi = (u - 0.5) * Math.PI * 0.94;
+      const rx = Math.max(2, R * Math.abs(Math.cos(phi)));
+      const ry = R;
+      const isAccent = (i === accentIdx || i === N - 1 - accentIdx);
 
-  if (subType === 'rose') {
-    // Polar rose / orbital lobes: r = A * cos(k * theta)
-    const k = prng.choice([1, 2, 3, 4]); // 1 = circle/dipole, 2 = 4-leaf clover (d-orbital), 3 = 3/6-leaf, 4 = 8-leaf
-    const numLayers = Math.round(1 + complexity * 3); // Nested orbital contours
-    const baseRotation = prng.range(0, Math.PI * 2);
-
-    for (let layer = 1; layer <= numLayers; layer++) {
-      const layerScale = (layer / numLayers) * maxRadius;
-      const points = [];
-      const steps = 144;
-      const angleMax = (k % 2 === 1) ? Math.PI : Math.PI * 2;
-
-      for (let s = 0; s <= steps; s++) {
-        const theta = (s / steps) * angleMax;
-        let r = layerScale * Math.cos(k * theta);
-
-        // Symmetry jitter if low
-        if (symmetry < 0.7) {
-          r *= (1 + prng.range(-0.15, 0.15) * (1 - symmetry));
-        }
-
-        const angle = theta + baseRotation;
-        const pt = {
-          x: canvasCenter.x + r * Math.cos(angle),
-          y: canvasCenter.y + r * Math.sin(angle)
-        };
-        points.push(transformPt(pt));
+      if (!depthTilt) {
+        scene.addEllipse(0, 0, rx, ry, rot2D, {
+          role: isAccent ? 'accent' : 'primary',
+          strokeWidthOverride: isAccent ? null : 0.65,
+          zPriority: isAccent ? 8 : 5
+        });
+      } else {
+        const pts = sampleEllipse(0, 0, rx, ry, rot2D, 0, Math.PI * 2, 72).map(transformPt);
+        scene.addPath(pts, {
+          role: isAccent ? 'accent' : 'primary',
+          isClosed: true,
+          strokeWidthOverride: isAccent ? null : 0.65,
+          zPriority: isAccent ? 8 : 5
+        });
       }
+    }
 
+    const sinR = Math.sin(rot2D), cosR = Math.cos(rot2D);
+    const topPole = transformPt({ x: R * sinR, y: -R * cosR });
+    const botPole = transformPt({ x: -R * sinR, y: R * cosR });
+    scene.addStarNode(topPole.x, topPole.y, 5.0, 4, { role: 'node' });
+    scene.addStarNode(botPole.x, botPole.y, 5.0, 4, { role: 'node' });
+    scene.setBounds({ minX: -R, minY: -R, maxX: R, maxY: R });
+  } else if (mode === 'foreshortened_stack') {
+    const N = Math.round(32 + complexity * 16); // N in [32, 48]
+    const rxBase = maxR * 0.88;
+    const baselineY = maxR * 0.52;
+    const accentIdx = Math.floor(N * 0.65);
+
+    for (let i = 1; i <= N; i++) {
+      if (symmetry < 0.6 && i % 5 === 2) continue;
+      // Optical caustic density: u_i = sin^2((pi * i) / (2 * N))
+      const u = Math.pow(Math.sin((Math.PI * i) / (2 * N)), 2);
+      const currentRy = Math.max(3, maxR * 0.64 * u);
+      const currentRx = rxBase * (0.30 + 0.70 * u);
+      const currentCy = baselineY - currentRy;
+      const isAccent = (i === accentIdx);
+
+      if (!depthTilt) {
+        scene.addEllipse(0, currentCy, currentRx, currentRy, 0, {
+          role: isAccent ? 'accent' : 'primary',
+          strokeWidthOverride: isAccent ? null : 0.65,
+          allowKnockout: false,
+          zPriority: isAccent ? 8 : 5
+        });
+      } else {
+        const pts = sampleEllipse(0, currentCy, currentRx, currentRy, 0, 0, Math.PI * 2, 72).map(transformPt);
+        scene.addPath(pts, {
+          role: isAccent ? 'accent' : 'primary',
+          isClosed: true,
+          strokeWidthOverride: isAccent ? null : 0.65,
+          allowKnockout: false,
+          zPriority: isAccent ? 8 : 5
+        });
+      }
+    }
+
+    const baseDot = transformPt({ x: 0, y: baselineY });
+    scene.addDot(baseDot.x, baseDot.y, 3.2, { filled: true, role: 'node', isGlow: true });
+    scene.setBounds({ minX: -rxBase, minY: baselineY - maxR * 1.28, maxX: rxBase, maxY: baselineY });
+  } else {
+    // rose
+    const k1 = prng.choice([2, 3, 4, 5]);
+    const k2 = prng.choice([k1 * 2, k1 + 1, k1 + 2]);
+    const phi = symmetry < 0.7 ? prng.range(0.25, Math.PI * 0.75) : 0;
+    const numLayers = Math.round(3 + complexity * 4);
+    const baseRot = prng.range(0, Math.PI * 2);
+
+    const RBase = maxR * 0.42;
+    const aBase = maxR * (0.36 + 0.14 * focus);
+    const bBase = maxR * (symmetry < 0.75 ? 0.15 : 0.10);
+    const partialArc = symmetry < 0.55;
+    const arcStart = prng.range(0, Math.PI * 0.5);
+    const arcSpan = partialArc ? Math.PI * (1.2 + symmetry * 0.65) : Math.PI * 2;
+
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (let layer = 1; layer <= numLayers; layer++) {
+      const scale = layer / numLayers;
+      const points = [];
+      const steps = 160;
+      for (let s = 0; s <= steps; s++) {
+        const theta = arcStart + (s / steps) * arcSpan;
+        const r = scale * (RBase + aBase * Math.cos(k1 * theta) + bBase * Math.cos(k2 * theta + phi));
+        const ang = theta + baseRot;
+        const pt = transformPt({ x: r * Math.cos(ang), y: r * Math.sin(ang) });
+        points.push(pt);
+        if (layer === numLayers) {
+          minX = Math.min(minX, pt.x); minY = Math.min(minY, pt.y);
+          maxX = Math.max(maxX, pt.x); maxY = Math.max(maxY, pt.y);
+        }
+      }
       const isAccent = (layer === numLayers);
       scene.addPath(points, {
-        role: isAccent ? 'accent' : 'structure',
-        isClosed: true,
-        isAccent,
-        seed: prng.rangeInt(0, 1000000)
+        role: isAccent ? 'accent' : 'primary',
+        isClosed: !partialArc,
+        strokeWidthOverride: !isAccent && numLayers >= 5 ? 0.7 : null,
+        zPriority: isAccent ? 8 : 5
       });
     }
 
-    // Nodes at tips of lobes
-    const tipCount = (k % 2 === 1) ? k : k * 2;
-    for (let t = 0; t < tipCount; t++) {
-      const tipAngle = baseRotation + (t / tipCount) * Math.PI * 2;
-      const tipPt = transformPt({
-        x: canvasCenter.x + maxRadius * Math.cos(tipAngle),
-        y: canvasCenter.y + maxRadius * Math.sin(tipAngle)
-      });
-      scene.addDot(tipPt.x, tipPt.y, prng.range(2.5, 3.5), { filled: true, role: 'nodes' });
+    for (let t = 0; t < k1; t++) {
+      const theta = (t / k1) * Math.PI * 2;
+      if (partialArc && (theta < arcStart || theta > arcStart + arcSpan)) continue;
+      const r = RBase + aBase * Math.cos(k1 * theta) + bBase * Math.cos(k2 * theta + phi);
+      const pt = transformPt({ x: r * Math.cos(theta + baseRot), y: r * Math.sin(theta + baseRot) });
+      scene.addDot(pt.x, pt.y, 2.6, { filled: true, role: 'node' });
     }
 
-  } else if (subType === 'bowtie_stack') {
-    // Stack of 6 to 40 rotated ellipses pinching into a bow-tie / nodal pinch
-    const ellipseCount = Math.round(6 + complexity * 34); // 6 to 40
-    const rx = maxRadius * 0.85;
-    const ry = maxRadius * prng.range(0.2, 0.45);
-    const rotationSpread = prng.range(Math.PI * 0.25, Math.PI * 0.65);
-    const accentIndex = prng.rangeInt(0, ellipseCount - 1);
-
-    for (let i = 0; i < ellipseCount; i++) {
-      const t = ellipseCount > 1 ? (i / (ellipseCount - 1)) - 0.5 : 0;
-      let rot = t * rotationSpread;
-      if (symmetry < 0.8) {
-        rot += prng.range(-0.08, 0.08) * (1 - symmetry);
-      }
-
-      const raw = sampleEllipse(canvasCenter.x, canvasCenter.y, rx, ry, rot, 0, Math.PI * 2, 72);
-      const transformed = raw.map(transformPt);
-      const isAccent = (i === accentIndex);
-
-      scene.addPath(transformed, {
-        role: isAccent ? 'accent' : 'structure',
-        isClosed: true,
-        isAccent,
-        seed: prng.rangeInt(0, 1000000)
-      });
-    }
-
-    // Nodal pinch center dot
-    const cPt = transformPt(canvasCenter);
-    scene.addDot(cPt.x, cPt.y, 4, { filled: true, role: 'nodes', isGlow: true });
-
-  } else {
-    // Foreshortened stack of flatter ellipses sharing one baseline
-    const ellipseCount = Math.round(6 + complexity * 28);
-    const rx = maxRadius * 0.8;
-    const baselineY = canvasCenter.y + maxRadius * 0.4;
-    const accentIndex = Math.floor(ellipseCount / 2);
-
-    for (let i = 0; i < ellipseCount; i++) {
-      const frac = (i + 1) / ellipseCount;
-      const currentRy = maxRadius * 0.6 * frac;
-      const currentCy = baselineY - currentRy;
-
-      const raw = sampleEllipse(canvasCenter.x, currentCy, rx * (0.3 + 0.7 * frac), currentRy, 0, 0, Math.PI * 2, 64);
-      const transformed = raw.map(transformPt);
-      const isAccent = (i === accentIndex);
-
-      scene.addPath(transformed, {
-        role: isAccent ? 'accent' : 'structure',
-        isClosed: true,
-        isAccent,
-        seed: prng.rangeInt(0, 1000000)
-      });
-    }
+    const cPt = transformPt({ x: 0, y: 0 });
+    scene.addDot(cPt.x, cPt.y, 3.2, { filled: true, role: 'node', isGlow: true });
+    scene.setBounds({ minX, minY, maxX, maxY });
   }
 
-  // Nucleus center dot
-  const centerPt = transformPt(canvasCenter);
-  scene.addDot(centerPt.x, centerPt.y, prng.range(3, 4.5), { filled: true, role: 'nodes', isGlow: true });
-  scene.hasNucleusOrCenterDot = true;
-
-  // Annotations
   if (annotations) {
-    // Nodal plane guide lines and axes
-    const p1 = transformPt({ x: canvasCenter.x - maxRadius * 1.1, y: canvasCenter.y });
-    const p2 = transformPt({ x: canvasCenter.x + maxRadius * 1.1, y: canvasCenter.y });
-    scene.addPath([p1, p2], { role: 'guides', allowOvershoot: false });
-
-    // Arrowhead on guide axis
-    const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
-    scene.addArrow(p2.x, p2.y, angle, 8, { filled: false, role: 'arrows' });
-
-    // Guide circle
-    const guidePts = sampleEllipse(canvasCenter.x, canvasCenter.y, maxRadius * 1.05, maxRadius * 1.05, 0, 0, Math.PI * 2, 48).map(transformPt);
-    scene.addPath(guidePts, { role: 'guides', isClosed: true, allowBreak: false });
+    const b = scene.coreBounds;
+    scene.addPath([transformPt({ x: b.minX, y: 0 }), transformPt({ x: b.maxX, y: 0 })], {
+      role: 'annotation',
+      isPolygonal: true,
+      zPriority: 1
+    });
   }
 
-  scene.enforceAtomHint(prng);
   return scene;
 }

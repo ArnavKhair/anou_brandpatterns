@@ -32,5 +32,9 @@ export const INITIAL_REFERENCES = [
   { id: "ref-23", family: "orbit_systems", complexity: 0.35, symmetry: 0.50, focus: 0.75, depthTilt: true,  annotations: true,  roughness: 0.28, lineBreaks: 0.12, strokeWeight: 1.6, weightVariation: 0.20, overshoot: 0.15 },
 
   { id: "ref-24", family: "particle_bursts", complexity: 0.60, symmetry: 0.45, focus: 0.85, depthTilt: false, annotations: true,  roughness: 0.28, lineBreaks: 0.12, strokeWeight: 1.5, weightVariation: 0.18, overshoot: 0.15 },
-  { id: "ref-25", family: "particle_bursts", complexity: 0.45, symmetry: 0.30, focus: 0.70, depthTilt: true,  annotations: false, roughness: 0.20, lineBreaks: 0.05, strokeWeight: 1.3, weightVariation: 0.10, overshoot: 0.08 }
+  { id: "ref-25", family: "particle_bursts", complexity: 0.45, symmetry: 0.30, focus: 0.70, depthTilt: true,  annotations: false, roughness: 0.20, lineBreaks: 0.05, strokeWeight: 1.3, weightVariation: 0.10, overshoot: 0.08 },
+
+  { id: "ref-26", family: "spirals", complexity: 0.70, symmetry: 0.85, focus: 0.80, depthTilt: false, annotations: true,  roughness: 0.04, lineBreaks: 0.00, strokeWeight: 1.2, weightVariation: 0.10, overshoot: 0.05 },
+  { id: "ref-27", family: "spirals", complexity: 0.85, symmetry: 0.60, focus: 0.65, depthTilt: false, annotations: false, roughness: 0.02, lineBreaks: 0.00, strokeWeight: 0.8, weightVariation: 0.25, overshoot: 0.00 },
+  { id: "ref-28", family: "spirals", complexity: 0.45, symmetry: 0.75, focus: 0.70, depthTilt: true,  annotations: true,  roughness: 0.10, lineBreaks: 0.05, strokeWeight: 1.6, weightVariation: 0.12, overshoot: 0.12 }
 ];
